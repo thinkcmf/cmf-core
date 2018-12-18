@@ -96,6 +96,7 @@ function cmf_get_domain()
 function cmf_get_root()
 {
     $root = request()->root();
+    $root = str_replace("//", '/', $root);
     $root = str_replace('/index.php', '', $root);
     if (defined('APP_NAMESPACE') && APP_NAMESPACE == 'api') {
         $root = preg_replace('/\/api$/', '', $root);
@@ -307,6 +308,11 @@ function cmf_random_string($len = 6)
  */
 function cmf_clear_cache()
 {
+    // 清除 opcache缓存
+    if (function_exists("opcache_reset")) {
+        opcache_reset();
+    }
+
     $dirs     = [];
     $rootDirs = cmf_scan_dir(Env::get('runtime_path') . "*");
     //$noNeedClear=array(".","..","Data");
@@ -1003,24 +1009,22 @@ function cmf_is_ipad()
  * 添加钩子
  * @param string $hook   钩子名称
  * @param mixed  $params 传入参数
- * @param mixed  $extra  额外参数
  * @return void
  */
-function hook($hook, &$params = null, $extra = null)
+function hook($hook, &$params = null)
 {
-    return Hook::listen($hook, $params, $extra);
+    return Hook::listen($hook, $params);
 }
 
 /**
  * 添加钩子,只执行一个
  * @param string $hook   钩子名称
  * @param mixed  $params 传入参数
- * @param mixed  $extra  额外参数
  * @return mixed
  */
-function hook_one($hook, &$params = null, $extra = null)
+function hook_one($hook, &$params = null)
 {
-    return Hook::listen($hook, $params, $extra, true);
+    return Hook::listen($hook, $params, true);
 }
 
 

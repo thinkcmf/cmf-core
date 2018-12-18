@@ -14,9 +14,8 @@ use think\exception\TemplateNotFoundException;
 use think\facade\Request;
 use think\Loader;
 
-use think\View;
-use think\Config;
 use think\Db;
+use think\View;
 
 /**
  * 插件类
@@ -32,19 +31,19 @@ abstract class Plugin
 
     /**
      * $info = array(
-     *  'name'=>'Helloworld',
-     *  'title'=>'Helloworld',
-     *  'description'=>'Helloworld',
+     *  'name'=>'HelloWorld',
+     *  'title'=>'HelloWorld',
+     *  'description'=>'HelloWorld',
      *  'status'=>1,
-     *  'author'=>'thinkcmf',
+     *  'author'=>'ThinkCMF',
      *  'version'=>'1.0'
      *  )
      */
-    public $info = [];
-    private $pluginPath = '';
-    private $name = '';
+    public  $info           = [];
+    private $pluginPath     = '';
+    private $name           = '';
     private $configFilePath = '';
-    private $themeRoot = "";
+    private $themeRoot      = "";
 
     /**
      * Plugin constructor.
@@ -52,9 +51,7 @@ abstract class Plugin
     public function __construct()
     {
 
-
-
-        $engineConfig = Config('template');
+        $engineConfig = config('template.');
 
         $this->name = $this->getName();
 
@@ -67,7 +64,7 @@ abstract class Plugin
 
         $theme = isset($config['theme']) ? $config['theme'] : '';
 
-        $depr = "/";
+        //$depr = "/";
 
         $root = cmf_get_root();
 
@@ -81,8 +78,8 @@ abstract class Plugin
 
         $pluginRoot = "plugins/{$nameCStyle}";
 
-        $cmfAdminThemePath    = config('cmf_admin_theme_path');
-        $cmfAdminDefaultTheme = config('cmf_admin_default_theme');
+        $cmfAdminThemePath    = config('template.cmf_admin_theme_path');
+        $cmfAdminDefaultTheme = config('template.cmf_admin_default_theme');
 
         $adminThemePath = "{$cmfAdminThemePath}{$cmfAdminDefaultTheme}";
 
@@ -106,8 +103,10 @@ abstract class Plugin
                 '__WEB_ROOT__'    => $cdnStaticRoot
             ];
         }
+        $view = new View();
 
-        $this->view = new View($engineConfig, $replaceConfig);
+        $this->view = $view->init($engineConfig);
+        $this->view->config('tpl_replace_string', $replaceConfig);
 
         //加载多语言
         $langSet   = Request::langset();
@@ -126,7 +125,7 @@ abstract class Plugin
     final protected function fetch($template)
     {
         if (!is_file($template)) {
-            $engineConfig = Config::get('template');
+            $engineConfig = config('template.');
             $template     = $this->themeRoot . $template . '.' . $engineConfig['view_suffix'];
         }
 
@@ -260,7 +259,7 @@ abstract class Plugin
         $config = [];
         if (file_exists($this->configFilePath)) {
             $tempArr = include $this->configFilePath;
-            if (!empty($tempArr)) {
+            if (!empty($tempArr) && is_array($tempArr)) {
                 foreach ($tempArr as $key => $value) {
                     if ($value['type'] == 'group') {
                         foreach ($value['options'] as $gkey => $gvalue) {
