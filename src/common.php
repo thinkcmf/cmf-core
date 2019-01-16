@@ -8,7 +8,6 @@
 // +---------------------------------------------------------------------
 // | Author: Dean <zxxjjforever@163.com>
 // +----------------------------------------------------------------------
-use think\facade\Config;
 use think\Db;
 use think\facade\Env;
 use think\facade\Url;
@@ -100,8 +99,9 @@ function cmf_get_root()
     $root = str_replace('/index.php', '', $root);
     if (defined('APP_NAMESPACE') && APP_NAMESPACE == 'api') {
         $root = preg_replace('/\/api$/', '', $root);
-        $root = rtrim($root, '/');
     }
+
+    $root = rtrim($root, '/');
 
     return $root;
 }
@@ -112,10 +112,12 @@ function cmf_get_root()
  */
 function cmf_get_current_theme()
 {
-    static $_currentTheme;
+    if (PHP_SAPI != 'cli') {
+        static $_currentTheme;
 
-    if (!empty($_currentTheme)) {
-        return $_currentTheme;
+        if (!empty($_currentTheme)) {
+            return $_currentTheme;
+        }
     }
 
     $t     = 't';
@@ -140,7 +142,7 @@ function cmf_get_current_theme()
     $designT = '_design_theme';
     if (isset($_GET[$designT])) {
         $theme = $_GET[$designT];
-        cookie('cmf_design_theme', $theme, 864000);
+        cookie('cmf_design_theme', $theme, 4);
     } elseif (cookie('cmf_design_theme')) {
         $theme = cookie('cmf_design_theme');
     }
@@ -157,10 +159,13 @@ function cmf_get_current_theme()
  */
 function cmf_get_current_admin_theme()
 {
-    static $_currentAdminTheme;
+    if (PHP_SAPI != 'cli') {
 
-    if (!empty($_currentAdminTheme)) {
-        return $_currentAdminTheme;
+        static $_currentAdminTheme;
+
+        if (!empty($_currentAdminTheme)) {
+            return $_currentAdminTheme;
+        }
     }
 
     $t     = '_at';
@@ -194,7 +199,7 @@ function cmf_get_current_admin_theme()
  */
 function cmf_get_theme_path($theme = null)
 {
-    $themePath = config('cmf_theme_path');
+    $themePath = config('template.cmf_theme_path');
     if ($theme === null) {
         // 获取当前主题名称
         $theme = cmf_get_current_theme();
@@ -236,7 +241,7 @@ function cmf_get_user_avatar_url($avatar)
 function cmf_password($pw, $authCode = '')
 {
     if (empty($authCode)) {
-        $authCode = Config::get('database.authcode');
+        $authCode = config('database.authcode');
     }
     $result = "###" . md5(md5($authCode . $pw));
     return $result;
@@ -249,7 +254,7 @@ function cmf_password($pw, $authCode = '')
  */
 function cmf_password_old($pw)
 {
-    $decor = md5(Config::get('database.prefix'));
+    $decor = md5(config('database.prefix'));
     $mi    = md5($pw);
     return substr($decor, 0, 12) . $mi . substr($decor, -4, 4);
 }
@@ -331,12 +336,12 @@ function cmf_clear_cache()
                         if (is_dir($tDir)) {
                             array_push($dirs, $tDir);
                         } else {
-                            @unlink($tDir);
+//                            @unlink($tDir);
                         }
                     }
                 }
             } else {
-                @unlink($dir);
+//                @unlink($dir);
             }
         }
     }
@@ -365,23 +370,31 @@ function cmf_save_var($path, $var)
  */
 function cmf_set_dynamic_config($data)
 {
-
     if (!is_array($data)) {
         return false;
     }
 
-    $configFile = CMF_ROOT . "data/conf/config.php";
-    if (file_exists($configFile)) {
-        $configs = include $configFile;
-    } else {
-        $configs = [];
+    foreach ($data as $key => $value) {
+        if (is_array($value)) {
+            $configFile = CMF_ROOT . "data/config/{$key}.php";
+            if (file_exists($configFile)) {
+                $configs = include $configFile;
+            } else {
+                $configs = [];
+            }
+
+            $configs = array_merge($configs, $value);
+
+            try {
+                file_put_contents($configFile, "<?php\treturn " . var_export($configs, true) . ";");
+            } catch (\Exception $e) {
+                return false;
+            }
+        }
     }
 
-    $configs = array_merge($configs, $data);
-    $result  = file_put_contents($configFile, "<?php\treturn " . var_export($configs, true) . ";");
-
     cmf_clear_cache();
-    return $result;
+    return true;
 }
 
 /**
@@ -434,8 +447,13 @@ function cmf_get_cmf_setting()
 
 /**
  * 更新CMF系统的设置，此类设置用于全局
- * @param array $data
- * @return boolean
+ * @param $data
+ * @return bool
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_set_cmf_setting($data)
 {
@@ -452,6 +470,11 @@ function cmf_set_cmf_setting($data)
  * @param array  $data    配置值，数组
  * @param bool   $replace 是否完全替换
  * @return bool 是否成功
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_set_option($key, $data, $replace = false)
 {
@@ -472,7 +495,7 @@ function cmf_set_option($key, $data, $replace = false)
 
         $option['option_value'] = json_encode($data);
         Db::name('option')->where('option_name', $key)->update($option);
-        Db::name('option')->getLastSql();
+//        echo Db::name('option')->getLastSql() . "\n";
     } else {
         $option['option_name']  = $key;
         $option['option_value'] = json_encode($data);
@@ -495,13 +518,15 @@ function cmf_get_option($key)
         return [];
     }
 
-    static $cmfGetOption;
+    if (PHP_SAPI != 'cli') {
+        static $cmfGetOption;
 
-    if (empty($cmfGetOption)) {
-        $cmfGetOption = [];
-    } else {
-        if (!empty($cmfGetOption[$key])) {
-            return $cmfGetOption[$key];
+        if (empty($cmfGetOption)) {
+            $cmfGetOption = [];
+        } else {
+            if (!empty($cmfGetOption[$key])) {
+                return $cmfGetOption[$key];
+            }
         }
     }
 
@@ -626,6 +651,7 @@ function cmf_strip_chars($str, $chars = '?<*.>\'\"')
  *                        "error"=>0|1,//0代表出错<br>
  *                        "message"=> "出错信息"<br>
  *                        );
+ * @throws phpmailerException
  */
 function cmf_send_email($address, $subject, $message)
 {
@@ -792,7 +818,7 @@ function cmf_str_decode($string, $key = '', $expiry = 0, $operation = 'DECODE')
 {
     $ckey_length = 4;
 
-    $key  = md5($key ? $key : config("authcode"));
+    $key  = md5($key ? $key : config("database.authcode"));
     $keya = md5(substr($key, 0, 16));
     $keyb = md5(substr($key, 16, 16));
     $keyc = $ckey_length ? ($operation == 'DECODE' ? substr($string, 0, $ckey_length) : substr(md5(microtime()), -$ckey_length)) : '';
@@ -872,6 +898,11 @@ function cmf_asset_relative_url($assetUrl)
  * @param boolean $ipLimit    ip限制,false为不限制，true为限制
  * @param int     $expire     距离上次访问的最小时间单位s，0表示不限制，大于0表示最后访问$expire秒后才可以访问
  * @return true 可访问，false不可访问
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_check_user_action($object = "", $countLimit = 1, $ipLimit = false, $expire = 0)
 {
@@ -929,10 +960,12 @@ function cmf_check_user_action($object = "", $countLimit = 1, $ipLimit = false, 
  */
 function cmf_is_mobile()
 {
-    static $cmf_is_mobile;
+    if (PHP_SAPI != 'cli') {
+        static $cmf_is_mobile;
 
-    if (isset($cmf_is_mobile))
-        return $cmf_is_mobile;
+        if (isset($cmf_is_mobile))
+            return $cmf_is_mobile;
+    }
 
     $cmf_is_mobile = request()->isMobile();
 
@@ -1011,7 +1044,7 @@ function cmf_is_ipad()
  * @param mixed  $params 传入参数
  * @return void
  */
-function hook($hook, &$params = null)
+function hook($hook, $params = null)
 {
     return Hook::listen($hook, $params);
 }
@@ -1022,7 +1055,7 @@ function hook($hook, &$params = null)
  * @param mixed  $params 传入参数
  * @return mixed
  */
-function hook_one($hook, &$params = null)
+function hook_one($hook, $params = null)
 {
     return Hook::listen($hook, $params, true);
 }
@@ -1060,9 +1093,8 @@ function cmf_get_plugin_config($name)
 /**
  * 替代scan_dir的方法
  * @param string $pattern 检索模式 搜索模式 *.txt,*.doc; (同glog方法)
- * @param int    $flags
- * @param        $pattern
- * @return array
+ * @param null   $flags
+ * @return array|false
  */
 function cmf_scan_dir($pattern, $flags = null)
 {
@@ -1295,6 +1327,9 @@ function cmf_get_file_extension($filename)
  * @param string  $account 手机或邮箱
  * @param integer $length  验证码位数,支持4,6,8
  * @return string 数字验证码
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
  */
 function cmf_get_verification_code($account, $length = 6)
 {
@@ -1336,18 +1371,25 @@ function cmf_get_verification_code($account, $length = 6)
 }
 
 /**
+ *
  * 更新手机或邮箱验证码发送日志
  * @param string $account    手机或邮箱
  * @param string $code       验证码
  * @param int    $expireTime 过期时间
- * @return boolean
+ * @return int|string
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_verification_code_log($account, $code, $expireTime = 0)
 {
-    $currentTime           = time();
-    $expireTime            = $expireTime > $currentTime ? $expireTime : $currentTime + 30 * 60;
-    $verificationCodeQuery = Db::name('verification_code');
-    $findVerificationCode  = $verificationCodeQuery->where('account', $account)->find();
+    $currentTime = time();
+    $expireTime  = $expireTime > $currentTime ? $expireTime : $currentTime + 30 * 60;
+
+    $findVerificationCode = Db::name('verification_code')->where('account', $account)->find();
+
     if ($findVerificationCode) {
         $todayStartTime = strtotime(date("Y-m-d"));//当天0点
         if ($findVerificationCode['send_time'] <= $todayStartTime) {
@@ -1355,7 +1397,7 @@ function cmf_verification_code_log($account, $code, $expireTime = 0)
         } else {
             $count = Db::raw('count+1');
         }
-        $result = $verificationCodeQuery
+        $result = Db::name('verification_code')
             ->where('account', $account)
             ->update([
                 'send_time'   => $currentTime,
@@ -1364,7 +1406,7 @@ function cmf_verification_code_log($account, $code, $expireTime = 0)
                 'count'       => $count
             ]);
     } else {
-        $result = $verificationCodeQuery
+        $result = Db::name('verification_code')
             ->insert([
                 'account'     => $account,
                 'send_time'   => $currentTime,
@@ -1383,18 +1425,23 @@ function cmf_verification_code_log($account, $code, $expireTime = 0)
  * @param string  $code    验证码
  * @param boolean $clear   是否验证后销毁验证码
  * @return string  错误消息,空字符串代码验证码正确
+ * @return string
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_check_verification_code($account, $code, $clear = false)
 {
-    $verificationCodeQuery = Db::name('verification_code');
-    $findVerificationCode  = $verificationCodeQuery->where('account', $account)->find();
 
+    $findVerificationCode = Db::name('verification_code')->where('account', $account)->find();
     if ($findVerificationCode) {
         if ($findVerificationCode['expire_time'] > time()) {
 
             if ($code == $findVerificationCode['code']) {
                 if ($clear) {
-                    $verificationCodeQuery->where('account', $account)->update(['code' => '']);
+                    Db::name('verification_code')->where('account', $account)->update(['code' => '']);
                 }
             } else {
                 return "验证码不正确!";
@@ -1414,11 +1461,14 @@ function cmf_check_verification_code($account, $code, $clear = false)
  * 清除某个手机或邮箱的数字验证码,一般在验证码验证正确完成后
  * @param string $account 手机或邮箱
  * @return boolean true：手机验证码正确，false：手机验证码错误
+ * @throws \think\Exception
+ * @throws \think\exception\PDOException
  */
 function cmf_clear_verification_code($account)
 {
     $verificationCodeQuery = Db::name('verification_code');
-    $verificationCodeQuery->where('account', $account)->update(['code' => '']);
+    $result                = $verificationCodeQuery->where('account', $account)->update(['code' => '']);
+    return $result;
 }
 
 /**
@@ -1443,6 +1493,11 @@ function file_exists_case($filename)
  * @param $userId
  * @param $deviceType
  * @return string 用户 token
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_generate_user_token($userId, $deviceType)
 {
@@ -1520,7 +1575,10 @@ function cmf_is_ssl()
 /**
  * 获取CMF系统的设置，此类设置用于全局
  * @param string $key 设置key，为空时返回所有配置信息
- * @return mixed
+ * @return array|bool|mixed
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
  */
 function cmf_get_cmf_settings($key = "")
 {
@@ -1595,14 +1653,17 @@ function cmf_url_encode($url, $params)
  * @param bool|string  $suffix 生成的URL后缀
  * @param bool|string  $domain 域名
  * @return string
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
  */
 function cmf_url($url = '', $vars = '', $suffix = true, $domain = false)
 {
-    static $routes;
+    global $CMF_GV_routes;
 
-    if (empty($routes)) {
-        $routeModel = new \app\admin\model\RouteModel();
-        $routes     = $routeModel->getRoutes();
+    if (empty($CMF_GV_routes)) {
+        $routeModel    = new \app\admin\model\RouteModel();
+        $CMF_GV_routes = $routeModel->getRoutes();
     }
 
     if (false === strpos($url, '://') && 0 !== strpos($url, '/')) {
@@ -1637,9 +1698,9 @@ function cmf_url($url = '', $vars = '', $suffix = true, $domain = false)
         $vars = array_merge($params, $vars);
     }
 
-    if (!empty($vars) && !empty($routes[$url])) {
+    if (!empty($vars) && !empty($CMF_GV_routes[$url])) {
 
-        foreach ($routes[$url] as $actionRoute) {
+        foreach ($CMF_GV_routes[$url] as $actionRoute) {
             $sameVars = array_intersect_assoc($vars, $actionRoute['vars']);
 
             if (count($sameVars) == count($actionRoute['vars'])) {
@@ -1785,6 +1846,11 @@ function cmf_curl_get($url)
 /**
  * 用户操作记录
  * @param string $action 用户操作
+ * @throws \think\Exception
+ * @throws \think\db\exception\DataNotFoundException
+ * @throws \think\db\exception\ModelNotFoundException
+ * @throws \think\exception\DbException
+ * @throws \think\exception\PDOException
  */
 function cmf_user_action($action)
 {
@@ -2037,4 +2103,30 @@ function cmf_counter_inc($name, $min = 1, $step = 1)
     }
 
     return $value;
+}
+
+/**
+ * 获取ThinkPHP版本
+ * @return string
+ */
+function cmf_thinkphp_version()
+{
+    return \think\facade\App::version();
+}
+
+/**
+ * 获取ThinkCMF版本
+ * @return string
+ */
+function cmf_version()
+{
+    return THINKCMF_VERSION;
+}
+
+/**
+ * 获取ThinkCMF核心包目录
+ */
+function cmf_core_path()
+{
+    return __DIR__ . DIRECTORY_SEPARATOR;
 }
