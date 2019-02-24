@@ -19,9 +19,19 @@ use think\facade\Hook;
 
 // 应用公共文件
 
-//设置插件入口路由
-Route::any('plugin/[:_plugin]/[:_controller]/[:_action]', "\\cmf\\controller\\PluginController@index");
-Route::get('new_captcha', "\\cmf\\controller\\CaptchaController@index");
+if (PHP_SAPI == 'cli') {
+    $apps = cmf_scan_dir(APP_PATH . '*', GLOB_ONLYDIR);
+
+    foreach ($apps as $app) {
+        $commandFile = APP_PATH . $app . '/command.php';
+
+        if (file_exists($commandFile)) {
+            $commands = include $commandFile;
+            // 注册命令行指令
+            \think\Console::addDefaultCommands($commands);
+        }
+    }
+}
 
 /**
  * 获取当前登录的管理员ID
@@ -656,7 +666,7 @@ function cmf_strip_chars($str, $chars = '?<*.>\'\"')
 function cmf_send_email($address, $subject, $message)
 {
     $smtpSetting = cmf_get_option('smtp_setting');
-    $mail        = new \PHPMailer();
+    $mail        = new \PHPMailer\PHPMailer\PHPMailer();
     // 设置PHPMailer使用SMTP服务器发送Email
     $mail->IsSMTP();
     $mail->IsHTML(true);
@@ -1060,7 +1070,6 @@ function hook_one($hook, $params = null)
     return Hook::listen($hook, $params, true);
 }
 
-
 /**
  * 获取插件类的类名
  * @param string $name 插件名
@@ -1093,8 +1102,9 @@ function cmf_get_plugin_config($name)
 /**
  * 替代scan_dir的方法
  * @param string $pattern 检索模式 搜索模式 *.txt,*.doc; (同glog方法)
- * @param null   $flags
- * @return array|false
+ * @param int    $flags
+ * @param        $pattern
+ * @return array
  */
 function cmf_scan_dir($pattern, $flags = null)
 {
@@ -1371,7 +1381,6 @@ function cmf_get_verification_code($account, $length = 6)
 }
 
 /**
- *
  * 更新手机或邮箱验证码发送日志
  * @param string $account    手机或邮箱
  * @param string $code       验证码
@@ -2151,4 +2160,54 @@ function cmf_get_app_config_file($app, $file)
 
     return $configFile;
 
+}
+
+/**
+ * 转换+-为desc和asc
+ * @param $order array 转换对象
+ * @return array
+ */
+function order_shift($order)
+{
+    $orderArr = [];
+    foreach ($order as $key => $value) {
+        $upDwn      = substr($value, 0, 1);
+        $orderType  = $upDwn == '-' ? 'desc' : 'asc';
+        $orderField = substr($value, 1);
+        if (!empty($whiteParams)) {
+            if (in_array($orderField, $whiteParams)) {
+                $orderArr[$orderField] = $orderType;
+            }
+        } else {
+            $orderArr[$orderField] = $orderType;
+        }
+    }
+    return $orderArr;
+}
+
+/**
+ * 模型检查
+ * @param $relationFilter array 检查的字段
+ * @param $relations string 被检查的字段
+ * @return array|bool
+ */
+function allowed_relations($relationFilter,$relations)
+{
+    if (is_string($relations)) {
+        $relations = explode(',', $relations);
+    }
+    if (!is_array($relations)) {
+        return false;
+    }
+    return array_intersect($relationFilter, $relations);
+}
+/**
+ * 字符串转数组
+ * @param string $string 字符串
+ * @return array
+ */
+function str_to_arr($string)
+{
+    $result = is_string($string) ? explode(',', $string) : $string;
+    return $result;
 }

@@ -101,7 +101,7 @@ var _app='{$app}';
 var _controller='{$controller}';
 var _action='{$action}';
 var _themeFile='{$more['file']}';
-if(parent){
+if(parent && parent.simulatorRefresh){
   parent.simulatorRefresh();  
 }
 </script>
@@ -184,7 +184,8 @@ hello;
         $themePath = config('template.cmf_theme_path');
         $file      = str_replace('\\', '/', $file);
         $file      = str_replace('//', '/', $file);
-        $themeFile = str_replace(['.html', '.php', $themePath . $theme . "/", WEB_ROOT], '', $file);
+        $webRoot   = str_replace('\\', '/', WEB_ROOT);
+        $themeFile = str_replace(['.html', '.php', $themePath . $theme . "/", $webRoot], '', $file);
 
         $files = Db::name('theme_file')->field('more')->where(['theme' => $theme])->where(function ($query) use ($themeFile) {
             $query->where(['is_public' => 1])->whereOr(['file' => $themeFile]);
