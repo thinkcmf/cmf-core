@@ -2,7 +2,7 @@
 // +---------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +---------------------------------------------------------------------
-// | Copyright (c) 2013-2018 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
 // +---------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -22,7 +22,7 @@ class HomeLangBehavior
         $langSet = request()->langset();
 
         // 加载核心应用前台通用语言包
-        $coreApps = ['admin', 'user', 'install'];
+        $coreApps = ['admin', 'user'];
         foreach ($coreApps as $app) {
             Lang::load([
                 Env::get('root_path') . "vendor/thinkcmf/cmf-app/src/{$app}/lang/{$langSet}/home.php"

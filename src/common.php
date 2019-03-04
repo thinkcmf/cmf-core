@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2018 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -215,7 +215,7 @@ function cmf_get_theme_path($theme = null)
         $theme = cmf_get_current_theme();
     }
 
-    return './' . $themePath . $theme;
+    return WEB_ROOT . $themePath . $theme;
 }
 
 /**
@@ -375,7 +375,7 @@ function cmf_save_var($path, $var)
 
 /**
  * 设置动态配置
- * @param array $data <br>如：["cmf_default_theme"=>'simpleboot3'];
+ * @param array $data <br>如：['template' => ['cmf_default_theme' => 'default']];
  * @return boolean
  */
 function cmf_set_dynamic_config($data)
@@ -1071,7 +1071,7 @@ function hook_one($hook, $params = null)
 }
 
 /**
- * 获取插件类的类名
+ * 获取插件类名
  * @param string $name 插件名
  * @return string
  */
@@ -1084,8 +1084,8 @@ function cmf_get_plugin_class($name)
 }
 
 /**
- * 获取插件类的配置
- * @param string $name 插件名
+ * 获取插件配置
+ * @param string $name 插件名，大驼峰格式
  * @return array
  */
 function cmf_get_plugin_config($name)
@@ -1263,9 +1263,9 @@ function cmf_alpha_id($in, $to_num = false, $pad_up = 4, $passKey = null)
 
 /**
  * 验证码检查，验证完后销毁验证码
- * @param string $value
- * @param string $id
- * @param bool   $reset
+ * @param string $value 要验证的字符串
+ * @param string $id    验证码的ID
+ * @param bool   $reset 验证成功后是否重置
  * @return bool
  */
 function cmf_captcha_check($value, $id = "", $reset = true)
@@ -1615,6 +1615,7 @@ function cmf_get_cmf_settings($key = "")
 }
 
 /**
+ * @deprecated
  * 判读是否sae环境
  * @return bool
  */
@@ -1825,7 +1826,7 @@ function cmf_replace_content_file_url($content, $isForDbSave = false)
 function cmf_get_admin_style()
 {
     $adminSettings = cmf_get_option('admin_settings');
-    return empty($adminSettings['admin_style']) ? 'flatadmin' : $adminSettings['admin_style'];
+    return empty($adminSettings['admin_style']) ? 'simpleadmin' : $adminSettings['admin_style'];
 }
 
 /**
@@ -2129,7 +2130,12 @@ function cmf_thinkphp_version()
  */
 function cmf_version()
 {
-    return THINKCMF_VERSION;
+    try {
+        $version = trim(file_get_contents(CMF_ROOT . 'version'));
+    } catch (\Exception $e) {
+        $version = '0.0.0';
+    }
+    return $version;
 }
 
 /**
@@ -2164,6 +2170,7 @@ function cmf_get_app_config_file($app, $file)
 
 /**
  * 转换+-为desc和asc
+ * @deprecated
  * @param $order array 转换对象
  * @return array
  */
@@ -2187,11 +2194,12 @@ function order_shift($order)
 
 /**
  * 模型检查
+ * @deprecated
  * @param $relationFilter array 检查的字段
- * @param $relations string 被检查的字段
+ * @param $relations      string 被检查的字段
  * @return array|bool
  */
-function allowed_relations($relationFilter,$relations)
+function allowed_relations($relationFilter, $relations)
 {
     if (is_string($relations)) {
         $relations = explode(',', $relations);
@@ -2201,8 +2209,10 @@ function allowed_relations($relationFilter,$relations)
     }
     return array_intersect($relationFilter, $relations);
 }
+
 /**
  * 字符串转数组
+ * @deprecated
  * @param string $string 字符串
  * @return array
  */

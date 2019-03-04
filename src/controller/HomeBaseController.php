@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2018 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -187,9 +187,10 @@ hello;
         $webRoot   = str_replace('\\', '/', WEB_ROOT);
         $themeFile = str_replace(['.html', '.php', $themePath . $theme . "/", $webRoot], '', $file);
 
-        $files = Db::name('theme_file')->field('more')->where(['theme' => $theme])->where(function ($query) use ($themeFile) {
-            $query->where(['is_public' => 1])->whereOr(['file' => $themeFile]);
-        })->select();
+        $files = Db::name('theme_file')->field('more')->where('theme', $theme)
+            ->where(function ($query) use ($themeFile) {
+                $query->where('is_public', 1)->whereOr('file', $themeFile);
+            })->select();
 
         $vars    = [];
         $widgets = [];
