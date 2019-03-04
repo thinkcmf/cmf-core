@@ -16,9 +16,9 @@
             "src/common.php"
         ],
         "classmap": [
-            "vendor/thinkcmf/cmf/src/App.php",
-            "vendor/thinkcmf/cmf/src/Log.php",
-            "vendor/thinkcmf/cmf/src/route/dispatch/Module.php"
+            "src/App.php",
+            "src/Log.php",
+            "src/route/dispatch/Module.php"
         ]
     }
 }
