@@ -15,7 +15,7 @@
         "mindplay/annotations": "^1.3",
         "ezyang/htmlpurifier": "^4.9",
         "electrolinux/phpquery": "^0.9.6",
-        "thinkcmf/cmf-extend": "~5.1.0",
+        "thinkcmf/cmf-extend": "~5.1.0"
     },
     "autoload": {
         "psr-4": {
