@@ -23,6 +23,7 @@ class Module extends Dispatch
 {
     protected $controller;
     protected $actionName;
+    protected static $moduleInited = [];
 
     public function init()
     {
@@ -58,7 +59,10 @@ class Module extends Dispatch
             if ($module && $available) {
                 // 初始化模块
                 $this->request->setModule($module);
-                $this->app->init($module);
+                if (empty(static::$moduleInited[$module])) {
+                    $this->app->init($module);
+                    static::$moduleInited[$module] = true;
+                }
             } else {
                 throw new HttpException(404, 'module not exists:' . $module);
             }
@@ -114,8 +118,8 @@ class Module extends Dispatch
 
                 // 自动获取请求变量
                 $vars = $this->rule->getConfig('url_param_type')
-                ? $this->request->route()
-                : $this->request->param();
+                    ? $this->request->route()
+                    : $this->request->param();
                 $vars = array_merge($vars, $this->param);
             } elseif (is_callable([$instance, '_empty'])) {
                 // 空操作
