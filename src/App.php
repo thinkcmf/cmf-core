@@ -445,6 +445,13 @@ class App extends Container
                 $dispatch = $this->routeCheck()->init();
             }
 
+            // 插件路由参数处理
+            $routeInfo = $this->request->routeInfo();
+            if (!empty($routeInfo['route']) && strpos($routeInfo['route'], '\cmf\controller\PluginController@index?') !== false) {
+                parse_str(str_replace('\cmf\controller\PluginController@index?', '', $routeInfo['route']), $routeParams);
+                $this->request->withRoute($routeParams);
+            }
+
             // 记录当前调度信息
             $this->request->dispatch($dispatch);
 
