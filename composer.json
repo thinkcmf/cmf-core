@@ -24,9 +24,6 @@
             "src/common.php"
         ],
         "classmap": [
-            "src/App.php",
-            "src/Log.php",
-            "src/route/dispatch/Module.php"
         ]
     }
 }

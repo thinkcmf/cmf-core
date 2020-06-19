@@ -20,17 +20,17 @@ use think\facade\Hook;
 // 应用公共文件
 
 if (PHP_SAPI == 'cli') {
-    $apps = cmf_scan_dir(APP_PATH . '*', GLOB_ONLYDIR);
-
-    foreach ($apps as $app) {
-        $commandFile = APP_PATH . $app . '/command.php';
-
-        if (file_exists($commandFile)) {
-            $commands = include $commandFile;
-            // 注册命令行指令
-            \think\Console::addDefaultCommands($commands);
-        }
-    }
+//    $apps = cmf_scan_dir(APP_PATH . '*', GLOB_ONLYDIR);
+//
+//    foreach ($apps as $app) {
+//        $commandFile = APP_PATH . $app . '/command.php';
+//
+//        if (file_exists($commandFile)) {
+//            $commands = include $commandFile;
+//            // 注册命令行指令
+//            \think\Console::addDefaultCommands($commands);
+//        }
+//    }
 }
 
 /**
