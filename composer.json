@@ -24,6 +24,7 @@
             "src/common.php"
         ],
         "classmap": [
+            "src/App.php"
         ]
     }
 }
