@@ -9,6 +9,7 @@
 // | Author: Dean <zxxjjforever@163.com>
 // +----------------------------------------------------------------------
 use think\Db;
+use cmf\model\OptionModel;
 use think\facade\Env;
 use think\facade\Url;
 use dir\Dir;
@@ -24,6 +25,18 @@ if (PHP_SAPI == 'cli') {
 
     foreach ($apps as $app) {
         $commandFile = APP_PATH . $app . '/command.php';
+
+        if (file_exists($commandFile)) {
+            $commands = include $commandFile;
+            // 注册命令行指令
+            \think\Console::addDefaultCommands($commands);
+        }
+    }
+
+    $plugins = cmf_scan_dir(WEB_ROOT . '/plugins/*', GLOB_ONLYDIR);
+
+    foreach ($plugins as $plugin) {
+        $commandFile = WEB_ROOT . "/plugins/$plugin/command.php";
 
         if (file_exists($commandFile)) {
             $commands = include $commandFile;
@@ -488,24 +501,24 @@ function cmf_set_option($key, $data, $replace = false)
         return false;
     }
 
-    $key        = strtolower($key);
-    $option     = [];
-    $findOption = Db::name('option')->where('option_name', $key)->find();
+    $key    = strtolower($key);
+    $option = [];
+
+    $findOption = OptionModel::where('option_name', $key)->find();
     if ($findOption) {
         if (!$replace) {
-            $oldOptionValue = json_decode($findOption['option_value'], true);
+            $oldOptionValue = $findOption['option_value'];
             if (!empty($oldOptionValue)) {
                 $data = array_merge($oldOptionValue, $data);
             }
         }
 
         $option['option_value'] = json_encode($data);
-        Db::name('option')->where('option_name', $key)->update($option);
-//        echo Db::name('option')->getLastSql() . "\n";
+        OptionModel::where('option_name', $key)->update($option);
     } else {
         $option['option_name']  = $key;
         $option['option_value'] = json_encode($data);
-        Db::name('option')->insert($option);
+        OptionModel::create($option);
     }
 
     cache('cmf_options_' . $key, null);//删除缓存
@@ -539,7 +552,7 @@ function cmf_get_option($key)
     $optionValue = cache('cmf_options_' . $key);
 
     if (empty($optionValue)) {
-        $optionValue = Db::name('option')->where('option_name', $key)->value('option_value');
+        $optionValue = OptionModel::where('option_name', $key)->value('option_value');
         if (!empty($optionValue)) {
             $optionValue = json_decode($optionValue, true);
 
@@ -806,7 +819,7 @@ function cmf_get_file_download_url($file, $expires = 3600)
         return $file;
     } else if (strpos($file, "/") === 0) {
         return $file;
-    } else if(strpos($file, "#") === 0) {
+    } else if (strpos($file, "#") === 0) {
         return $file;
     } else {
         $storage = Storage::instance();
@@ -1178,8 +1191,8 @@ function cmf_plugin_url($url, $vars = [], $domain = false)
 
             if (count($sameVars) == count($actionRoute['vars'])) {
                 ksort($sameVars);
-                $pluginUrl  = $pluginUrl . '&' . http_build_query($sameVars);
-                $vars = array_diff_assoc($vars, $sameVars);
+                $pluginUrl = $pluginUrl . '&' . http_build_query($sameVars);
+                $vars      = array_diff_assoc($vars, $sameVars);
                 break;
             }
         }
@@ -1629,9 +1642,9 @@ function cmf_get_cmf_settings($key = "")
 }
 
 /**
+ * @return bool
  * @deprecated
  * 判读是否sae环境
- * @return bool
  */
 function cmf_is_sae()
 {
@@ -1824,7 +1837,7 @@ function cmf_replace_content_file_url($content, $isForDbSave = false)
         }
     }
 
-    $content = $pq->html();
+    $content = $pq->htmlOuter();
 
     \phpQuery::$documents = null;
 
@@ -1905,10 +1918,11 @@ function cmf_user_action($action)
                     $endDayEndTime     = strtotime(date('Y-m-d', strtotime("+{$cycleTime} day", $firstDayStartTime)));
 //                    $todayStartTime        = strtotime(date('Y-m-d'));
 //                    $todayEndTime          = strtotime(date('Y-m-d', strtotime('+1 day')));
-                    $findUserScoreLogCount = Db::name('user_score_log')->where([
-                        'user_id'     => $userId,
-                        'create_time' => [['gt', $firstDayStartTime], ['lt', $endDayEndTime]]
-                    ])->count();
+                    $findUserScoreLogCount = Db::name('user_score_log')
+                        ->where('user_id', $userId)
+                        ->where('create_time', '>', $firstDayStartTime)
+                        ->where('create_time', '<', $endDayEndTime)
+                        ->count();
                     if ($findUserScoreLogCount < $findUserAction['reward_number']) {
                         $changeScore = true;
                     }
@@ -2187,9 +2201,9 @@ function cmf_get_app_config_file($app, $file)
 
 /**
  * 转换+-为desc和asc
- * @deprecated
  * @param $order array 转换对象
  * @return array
+ * @deprecated
  */
 function order_shift($order)
 {
@@ -2211,10 +2225,10 @@ function order_shift($order)
 
 /**
  * 模型检查
- * @deprecated
  * @param $relationFilter array 检查的字段
  * @param $relations      string 被检查的字段
  * @return array|bool
+ * @deprecated
  */
 function allowed_relations($relationFilter, $relations)
 {
@@ -2229,9 +2243,9 @@ function allowed_relations($relationFilter, $relations)
 
 /**
  * 字符串转数组
- * @deprecated
  * @param string $string 字符串
  * @return array
+ * @deprecated
  */
 function str_to_arr($string)
 {
