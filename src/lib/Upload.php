@@ -2,7 +2,7 @@
 // +---------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +---------------------------------------------------------------------
-// | Copyright (c) 2013-2014 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +---------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -15,7 +15,7 @@ use think\facade\Env;
 use think\File;
 use app\user\model\AssetModel;
 use think\Response;
-use think\Db;
+use think\facade\Db;
 
 /**
  * ThinkCMF上传类,分块上传
@@ -98,7 +98,7 @@ class Upload
         }
 
         $fileImage    = $this->request->file($this->formName);
-        $originalName = $fileImage->getInfo('name');
+        $originalName = $fileImage->getOriginalName();
 
         $arrAllowedExtensions = explode(',', $arrFileTypes[$fileType]['extensions']);
 
@@ -164,7 +164,7 @@ class Upload
             return false;
         }
         // Read binary input stream and append it to temp file
-        if (!$in = @fopen($fileImage->getInfo("tmp_name"), "rb")) {
+        if (!$in = @fopen($fileImage->getPathname(), "rb")) {
             $this->error = "Failed to open input stream！";
             return false;
         }
@@ -234,22 +234,24 @@ class Upload
         @fclose($out);
 
         $fileImage = new File($strSaveFilePath, 'r');
-        $arrInfo   = [
-            "name"     => $originalName,
-            "type"     => $fileImage->getMime(),
-            "tmp_name" => $strSaveFilePath,
-            "error"    => 0,
-            "size"     => $fileImage->getSize(),
-        ];
-
-        $fileImage->setSaveName($fileSaveName);
-        $fileImage->setUploadInfo($arrInfo);
+//        $arrInfo   = [
+//            "name"     => $originalName,
+//            "type"     => $fileImage->getMime(),
+//            "tmp_name" => $strSaveFilePath,
+//            "error"    => 0,
+//            "size"     => $fileImage->getSize(),
+//        ];
+//
+//        $fileImage->setSaveName($fileSaveName);
+//        $fileImage->setUploadInfo($arrInfo);
 
         /**
          * 断点续传 end
          */
 
-        if (!$fileImage->validate(['size' => $fileUploadMaxFileSize])->check()) {
+
+        if (!validate(['file' => "fileSize:$fileUploadMaxFileSize"])
+            ->check(['file' => $fileImage])) {
             $error = $fileImage->getError();
             unset($fileImage);
             unlink($strSaveFilePath);
@@ -280,7 +282,7 @@ class Upload
                 $arrInfo["file_md5"]    = md5_file($strSaveFilePath);
                 $arrInfo["file_sha1"]   = sha1_file($strSaveFilePath);
                 $arrInfo["file_key"]    = $arrInfo["file_md5"] . md5($arrInfo["file_sha1"]);
-                $arrInfo["filename"]    = $fileImage->getInfo("name");
+                $arrInfo["filename"]    = $originalName;
                 $arrInfo["file_path"]   = $strWebPath . $fileSaveName;
                 $arrInfo["suffix"]      = $fileImage->getExtension();
             }
@@ -323,7 +325,7 @@ class Upload
         if ($objAsset) {
             $assetModel->where('id', $objAsset['id'])->update(['filename' => $arrInfo["filename"]]);
         } else {
-            $assetModel->data($arrInfo)->allowField(true)->save();
+            $assetModel->save($arrInfo);
         }
 
         //删除临时文件

@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -10,7 +10,7 @@
 // +----------------------------------------------------------------------
 namespace cmf\controller;
 
-use think\Db;
+use think\facade\Db;
 use app\admin\model\ThemeModel;
 use think\facade\View;
 
@@ -22,8 +22,6 @@ class HomeBaseController extends BaseController
         // 监听home_init
         hook('home_init');
         parent::initialize();
-        $siteInfo = cmf_get_site_info();
-        View::share('site_info', $siteInfo);
     }
 
     protected function _initializeView()
@@ -53,18 +51,20 @@ class HomeBaseController extends BaseController
             ];
         }
 
-        config('template.view_base', WEB_ROOT . "{$themePath}/");
-        config('template.tpl_replace_string', $viewReplaceStr);
+        $this->view->engine()->config([
+            'view_base'          => $themePath . '/',
+            'tpl_replace_string' => $viewReplaceStr
+        ]);
 
-        $themeErrorTmpl = "{$themePath}/error.html";
-        if (file_exists_case($themeErrorTmpl)) {
-            config('dispatch_error_tmpl', $themeErrorTmpl);
-        }
-
-        $themeSuccessTmpl = "{$themePath}/success.html";
-        if (file_exists_case($themeSuccessTmpl)) {
-            config('dispatch_success_tmpl', $themeSuccessTmpl);
-        }
+//        $themeErrorTmpl = "{$themePath}/error.html";
+//        if (file_exists_case($themeErrorTmpl)) {
+//            config('dispatch_error_tmpl', $themeErrorTmpl);
+//        }
+//
+//        $themeSuccessTmpl = "{$themePath}/success.html";
+//        if (file_exists_case($themeSuccessTmpl)) {
+//            config('dispatch_success_tmpl', $themeSuccessTmpl);
+//        }
 
 
     }
@@ -83,12 +83,11 @@ class HomeBaseController extends BaseController
         $more     = $this->getThemeFileMore($template);
         $this->assign('theme_vars', $more['vars']);
         $this->assign('theme_widgets', $more['widgets']);
-        $content = $this->view->fetch($template, $vars, $config);
-
+        $content        = $this->view->fetch($template, $vars, $config);
         $designingTheme = cookie('cmf_design_theme');
 
         if ($designingTheme) {
-            $app        = $this->request->module();
+            $app        = $this->app->http->getName();
             $controller = $this->request->controller();
             $action     = $this->request->action();
 
@@ -125,6 +124,9 @@ hello;
      */
     private function parseTemplate($template)
     {
+        $siteInfo = cmf_get_site_info();
+        $this->view->assign('site_info', $siteInfo);
+
         // 分析模板文件规则
         $request = $this->request;
         // 获取视图根目录
@@ -133,17 +135,15 @@ hello;
             list($module, $template) = explode('@', $template);
         }
 
-        $viewBase = config('template.view_base');
+        $cmfThemePath    = config('template.cmf_theme_path');
+        $cmfDefaultTheme = cmf_get_current_theme();
+        $themePath       = "{$cmfThemePath}{$cmfDefaultTheme}/";
 
-        if ($viewBase) {
-            // 基础视图目录
-            $module = isset($module) ? $module : $request->module();
-            $path   = $viewBase . ($module ? $module . DIRECTORY_SEPARATOR : '');
-        } else {
-            $path = isset($module) ? APP_PATH . $module . DIRECTORY_SEPARATOR . 'view' . DIRECTORY_SEPARATOR : config('template.view_path');
-        }
+        // 基础视图目录
+        $module = isset($module) ? $module : $this->app->http->getName();
+        $path   = $themePath . ($module ? $module . DIRECTORY_SEPARATOR : '');
 
-        $depr = config('template.view_depr');
+        $depr = config('view.view_depr');
         if (0 !== strpos($template, '/')) {
             $template   = str_replace(['/', ':'], $depr, $template);
             $controller = cmf_parse_name($request->controller());
@@ -158,7 +158,8 @@ hello;
         } else {
             $template = str_replace(['/', ':'], $depr, substr($template, 1));
         }
-        return $path . ltrim($template, '/') . '.' . ltrim(config('template.view_suffix'), '.');
+
+        return $path . ltrim($template, '/') . '.' . ltrim(config('view.view_suffix'), '.');
     }
 
     /**

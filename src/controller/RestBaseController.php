@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -10,12 +10,13 @@
 // +----------------------------------------------------------------------
 namespace cmf\controller;
 
+use cmf\model\UserTokenModel;
 use think\App;
 use think\Container;
 use think\exception\HttpResponseException;
 use think\exception\ValidateException;
 use think\Response;
-use think\Db;
+use think\Validate;
 
 class RestBaseController
 {
@@ -62,10 +63,10 @@ class RestBaseController
      */
     public function __construct(App $app = null)
     {
-        $this->app     = $app ?: Container::get('app');
-        $this->request = $this->app['request'];
+        $this->app     = $app ?: app();
+        $this->request = $this->app->request;
 
-        $this->request->root(cmf_get_root() . '/');
+//        $this->request->root(cmf_get_root() . '/');
 
         $this->apiVersion = $this->request->header('XX-Api-Version');
 
@@ -111,11 +112,10 @@ class RestBaseController
 
         $this->token = $token;
 
-        $user = Db::name('user_token')
-            ->alias('a')
+        $user = UserTokenModel::alias('a')
             ->field('b.*')
             ->where(['token' => $token, 'device_type' => $deviceType])
-            ->join('__USER__ b', 'a.user_id = b.id')
+            ->join('user b', 'a.user_id = b.id')
             ->find();
 
         if (!empty($user)) {
@@ -129,8 +129,8 @@ class RestBaseController
     /**
      * 前置操作
      * @access protected
-     * @param string $method 前置操作方法名
-     * @param array $options 调用参数 ['only'=>[...]] 或者['except'=>[...]]
+     * @param string $method  前置操作方法名
+     * @param array  $options 调用参数 ['only'=>[...]] 或者['except'=>[...]]
      */
     protected function beforeAction($method, $options = [])
     {
@@ -169,57 +169,71 @@ class RestBaseController
     /**
      * 验证数据
      * @access protected
-     * @param array $data 数据
+     * @param array        $data     数据
      * @param string|array $validate 验证器名或者验证规则数组
-     * @param array $message 提示信息
-     * @param bool $batch 是否批量验证
-     * @param mixed $callback 回调方法（闭包）
+     * @param array        $message  提示信息
+     * @param bool         $batch    是否批量验证
+     * @param mixed        $callback 回调方法（闭包）
      * @return bool
      */
     protected function validate($data, $validate, $message = [], $batch = false, $callback = null)
     {
         if (is_array($validate)) {
-            $v = $this->app->validate();
+            $v = new Validate();
             $v->rule($validate);
         } else {
             if (strpos($validate, '.')) {
                 // 支持场景
-                list($validate, $scene) = explode('.', $validate);
+                [$validate, $scene] = explode('.', $validate);
             }
-            $v = $this->app->validate($validate);
+            $class = false !== strpos($validate, '\\') ? $validate : $this->app->parseClass('validate', $validate . 'Validate');
+            $v     = new $class();
             if (!empty($scene)) {
                 $v->scene($scene);
             }
         }
+
+        $v->message($message);
+
         // 是否批量验证
         if ($batch || $this->batchValidate) {
             $v->batch(true);
         }
 
-        if (is_array($message)) {
-            $v->message($message);
+        $result = $v->failException(false)->check($data);
+
+        if (!$result) {
+            $result = $v->getError();
         }
 
-        if ($callback && is_callable($callback)) {
-            call_user_func_array($callback, [$v, &$data]);
+        return $result;
+    }
+
+    /**
+     * 验证数据并直接提示错误信息
+     * @access protected
+     * @param array        $data     数据
+     * @param string|array $validate 验证器名或者验证规则数组
+     * @param array        $message  提示信息
+     * @param mixed        $callback 回调方法（闭包）
+     * @return array|string|true
+     * @throws HttpResponseException
+     */
+    protected function validateFailError($data, $validate, $message = [], $callback = null)
+    {
+        $result = $this->validate($data, $validate, $message);
+        if ($result !== true) {
+            $this->error($result);
         }
 
-        if (!$v->check($data)) {
-            if ($this->failException) {
-                throw new ValidateException($v->getError());
-            } else {
-                return $v->getError();
-            }
-        } else {
-            return true;
-        }
+        return $result;
     }
 
     /**
      * 操作成功跳转的快捷方法
      * @access protected
-     * @param mixed $msg 提示信息
-     * @param mixed $data 返回的数据
+     * @param mixed $msg    提示信息
+     * @param mixed $data   返回的数据
      * @param array $header 发送的Header信息
      * @return void
      */
@@ -243,8 +257,8 @@ class RestBaseController
     /**
      * 操作错误跳转的快捷方法
      * @access protected
-     * @param mixed $msg 提示信息,若要指定错误码,可以传数组,格式为['code'=>您的错误码,'msg'=>'您的错误消息']
-     * @param mixed $data 返回的数据
+     * @param mixed $msg    提示信息,若要指定错误码,可以传数组,格式为['code'=>您的错误码,'msg'=>'您的错误消息']
+     * @param mixed $data   返回的数据
      * @param array $header 发送的Header信息
      * @return void
      */

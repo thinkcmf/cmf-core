@@ -8,7 +8,7 @@
 // +----------------------------------------------------------------------
 // | Author: liu21st <liu21st@gmail.com>
 // +----------------------------------------------------------------------
-declare (strict_types = 1);
+declare (strict_types=1);
 
 namespace think;
 
@@ -39,7 +39,7 @@ use think\initializer\RegisterService;
  */
 class App extends Container
 {
-    const VERSION = '6.0.2';
+    const VERSION = '6.0.5';
 
     /**
      * 应用调试模式
@@ -64,6 +64,12 @@ class App extends Container
      * @var string
      */
     protected $namespace = 'app';
+
+    /**
+     * 当前项目应用类库根命名空间
+     * @var string
+     */
+    protected $rootNamespace = 'app';
 
     /**
      * 应用根目录
@@ -162,13 +168,39 @@ class App extends Container
      */
     public function __construct(string $rootPath = '')
     {
-        $this->thinkPath   = dirname(__DIR__) . DIRECTORY_SEPARATOR;
-        $this->rootPath    = $rootPath ? rtrim($rootPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR : $this->getDefaultRootPath();
-        $this->appPath     = $this->rootPath . 'app' . DIRECTORY_SEPARATOR;
-        $this->runtimePath = $this->rootPath . 'runtime' . DIRECTORY_SEPARATOR;
+        if (defined('APP_NAMESPACE')) {
+            $this->namespace     = APP_NAMESPACE;
+            $this->rootNamespace = APP_NAMESPACE;
+        }
 
+        $this->thinkPath   = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'topthink' . DIRECTORY_SEPARATOR . 'framework' . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
+        $this->rootPath    = $rootPath ? rtrim($rootPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR : $this->getDefaultRootPath();
+        $this->appPath     = $this->rootPath . $this->namespace . DIRECTORY_SEPARATOR;
+        $this->runtimePath = $this->rootPath . 'data' . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR;
+
+        if (defined('RUNTIME_PATH')) {
+            $this->runtimePath = RUNTIME_PATH;
+        }
+        
         if (is_file($this->appPath . 'provider.php')) {
             $this->bind(include $this->appPath . 'provider.php');
+        }
+
+        // 加载cmf-app，cmf-api provider
+        $appRootNamespace   = $this->getRootNamespace();
+        $rootPath           = $this->rootPath;
+        $vendorProviderFile = "{$rootPath}vendor/thinkcmf/cmf-{$appRootNamespace}/src/provider.php";
+        if (is_file($vendorProviderFile)) {
+            $this->bind(include $vendorProviderFile);
+        }
+
+        // 加载应用 provider
+        $apps = cmf_scan_dir(APP_PATH . '*', GLOB_ONLYDIR);
+        foreach ($apps as $appName) {
+            $appProviderFile = APP_PATH . $appName . DIRECTORY_SEPARATOR . 'provider.php';
+            if (is_file($appProviderFile)) {
+                $this->bind(include $appProviderFile);
+            }
         }
 
         static::setInstance($this);
@@ -278,6 +310,16 @@ class App extends Container
     }
 
     /**
+     * 获取项目应用类库根命名空间
+     * @access public
+     * @return string
+     */
+    public function getRootNamespace(): string
+    {
+        return $this->rootNamespace;
+    }
+
+    /**
      * 获取框架版本
      * @access public
      * @return string
@@ -304,7 +346,11 @@ class App extends Container
      */
     public function getBasePath(): string
     {
-        return $this->rootPath . 'app' . DIRECTORY_SEPARATOR;
+        $app = 'app';
+        if (defined('APP_NAMESPACE')) {
+            $app = APP_NAMESPACE;
+        }
+        return $this->rootPath . $app . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -499,6 +545,14 @@ class App extends Container
 
         include_once $this->thinkPath . 'helper.php';
 
+        // 加载应用配置
+        $appConfigFiles = glob(__DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . '*.php');
+
+        foreach ($appConfigFiles as $file) {
+            $this->config->load($file, pathinfo($file, PATHINFO_FILENAME));
+        }
+        // 加载应用配置结束
+
         $configPath = $this->getConfigPath();
 
         $files = [];
@@ -509,6 +563,29 @@ class App extends Container
 
         foreach ($files as $file) {
             $this->config->load($file, pathinfo($file, PATHINFO_FILENAME));
+        }
+
+        // 动态配置
+        $runtimeConfigPath = $this->rootPath . 'data' . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR;
+
+        $files = [];
+
+        if (is_dir($runtimeConfigPath)) {
+            $files = glob($runtimeConfigPath . '*' . $this->configExt);
+        }
+
+        foreach ($files as $file) {
+            $this->config->load($file, pathinfo($file, PATHINFO_FILENAME));
+        }
+        // 动态配置结束
+
+        // 加载cmf-app，cmf-api事件配置
+        $appRootNamespace = $this->getRootNamespace();
+        $rootPath         = root_path();
+
+        $vendorEventFile = "{$rootPath}vendor/thinkcmf/cmf-{$appRootNamespace}/src/event.php";
+        if (is_file($vendorEventFile)) {
+            $this->loadEvent(include $vendorEventFile);
         }
 
         if (is_file($appPath . 'event.php')) {
@@ -533,7 +610,17 @@ class App extends Container
         // 应用调试模式
         if (!$this->appDebug) {
             $this->appDebug = $this->env->get('app_debug') ? true : false;
-            ini_set('display_errors', 'Off');
+            if (!$this->appDebug) {
+                ini_set('display_errors', 'Off');
+            }
+        }
+
+        if (!defined('APP_DEBUG')) {
+            if ($this->appDebug) {
+                define('APP_DEBUG', true);
+            } else {
+                define('APP_DEBUG', false);
+            }
         }
 
         if (!$this->runningInConsole()) {
@@ -602,9 +689,7 @@ class App extends Container
      */
     protected function getDefaultRootPath(): string
     {
-        $path = dirname(dirname(dirname(dirname($this->thinkPath))));
-
-        return $path . DIRECTORY_SEPARATOR;
+        return dirname($this->thinkPath, 4) . DIRECTORY_SEPARATOR;
     }
 
 }

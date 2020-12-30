@@ -1,20 +1,28 @@
 <?php
 // +----------------------------------------------------------------------
-// | ThinkPHP [ WE CAN DO IT JUST THINK ]
+// | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2006~2018 http://thinkphp.cn All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +----------------------------------------------------------------------
-// | Author: liu21st <liu21st@gmail.com>
+// | Author: 老猫 <thinkcmf@126.com>
 // +----------------------------------------------------------------------
+namespace cmf\model;
 
-namespace cmf\response;
+use think\Model;
 
-use think\Response;
-
-class Html extends Response
+class HookModel extends Model
 {
-    protected $contentType = 'text/html';
+    /**
+     * 模型名称
+     * @var string
+     */
+    protected $name = 'hook';
+
+    public function plugins()
+    {
+        return $this->belongsToMany('PluginModel', 'hook_plugin', 'plugin', 'hook');
+    }
 
 }

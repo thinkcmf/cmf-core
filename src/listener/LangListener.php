@@ -2,46 +2,53 @@
 // +---------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +---------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +---------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
 // | Author: Dean <zxxjjforever@163.com>
 // +---------------------------------------------------------------------
-namespace cmf\behavior;
+namespace cmf\listener;
 
-use think\facade\Env;
-use think\facade\Lang;
+use think\db\Query;
+use think\exception\HttpResponseException;
+use think\facade\Db;
+use think\facade\Response;
+use think\facade\Route;
 
-class HomeLangBehavior
+class LangListener
 {
+
     protected static $run = false;
 
     // 行为扩展的执行入口必须是run
-    public function run()
+    public function handle($param)
     {
         if (self::$run) {
             return;
         }
         self::$run = true;
-        
-        $langSet = request()->langset();
 
-        // 加载核心应用前台通用语言包
+        $this->app = app();
+        $langSet   = $this->app->lang->getLangSet();
+        $this->app->lang->load([
+            root_path() . "vendor/thinkcmf/cmf/src/lang/{$langSet}.php",
+        ]);
+
+        // 加载核心应用公共语言包
         $coreApps = ['admin', 'user'];
         foreach ($coreApps as $app) {
-            Lang::load([
-                Env::get('root_path') . "vendor/thinkcmf/cmf-app/src/{$app}/lang/{$langSet}/home.php"
+            $this->app->lang->load([
+                root_path() . "vendor/thinkcmf/cmf-app/src/{$app}/lang/{$langSet}/common.php"
             ]);
         }
 
-        // 加载应用前台通用语言包
+	    // 加载应用公共语言包
         $apps = cmf_scan_dir(APP_PATH . '*', GLOB_ONLYDIR);
         foreach ($apps as $app) {
-            Lang::load([
-                APP_PATH . $app . DIRECTORY_SEPARATOR . 'lang' . DIRECTORY_SEPARATOR . $langSet . DIRECTORY_SEPARATOR . 'home.php',
+            $this->app->lang->load([
+                APP_PATH . $app . DIRECTORY_SEPARATOR . 'lang' . DIRECTORY_SEPARATOR . $langSet . DIRECTORY_SEPARATOR . 'common.php',
             ]);
         }
-
     }
 }

@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -10,7 +10,7 @@
 // +----------------------------------------------------------------------
 namespace cmf\controller;
 
-use think\Db;
+use app\admin\model\UserModel;
 
 class AdminBaseController extends BaseController
 {
@@ -22,7 +22,7 @@ class AdminBaseController extends BaseController
         parent::initialize();
         $sessionAdminId = session('ADMIN_ID');
         if (!empty($sessionAdminId)) {
-            $user = Db::name('user')->where('id', $sessionAdminId)->find();
+            $user = UserModel::where('id', $sessionAdminId)->find();
 
             if (!$this->checkAccess($sessionAdminId)) {
                 $this->error("您没有访问权限！");
@@ -30,7 +30,7 @@ class AdminBaseController extends BaseController
             $this->assign("admin", $user);
         } else {
             if ($this->request->isPost()) {
-                $this->error("您还没有登录！", url("admin/public/login"));
+                $this->error("您还没有登录！", url("admin/Public/login"));
             } else {
                 return $this->redirect(url("admin/Public/login"));
             }
@@ -65,8 +65,70 @@ class AdminBaseController extends BaseController
             ];
         }
 
-        config('template.view_base', WEB_ROOT . "$themePath/");
-        config('template.tpl_replace_string', $viewReplaceStr);
+        $this->view->engine()->config([
+            'view_base'          => WEB_ROOT . $themePath . '/',
+            'tpl_replace_string' => $viewReplaceStr
+        ]);
+
+    }
+
+    /**
+     * 加载模板输出
+     * @access protected
+     * @param string $template 模板文件名
+     * @param array  $vars     模板输出变量
+     * @param array  $config   模板参数
+     * @return mixed
+     */
+    protected function fetch($template = '', $vars = [], $config = [])
+    {
+        $template = $this->parseTemplate($template);
+        $content  = $this->view->fetch($template, $vars, $config);
+
+        return $content;
+    }
+
+    /**
+     * 自动定位模板文件
+     * @access private
+     * @param string $template 模板文件规则
+     * @return string
+     */
+    private function parseTemplate($template)
+    {
+        // 分析模板文件规则
+        $request = $this->request;
+        // 获取视图根目录
+        if (strpos($template, '@')) {
+            // 跨模块调用
+            list($app, $template) = explode('@', $template);
+        }
+
+        $cmfAdminThemePath    = config('template.cmf_admin_theme_path');
+        $cmfAdminDefaultTheme = cmf_get_current_admin_theme();
+        $themePath            = "{$cmfAdminThemePath}{$cmfAdminDefaultTheme}/";
+
+        // 基础视图目录
+        $app = isset($app) ? $app : $this->app->http->getName();
+        $path   = $themePath . ($app ? $app . DIRECTORY_SEPARATOR : '');
+
+        $depr = config('view.view_depr');
+        if (0 !== strpos($template, '/')) {
+            $template   = str_replace(['/', ':'], $depr, $template);
+            $controller = cmf_parse_name($request->controller());
+            if ($controller) {
+                if ('' == $template) {
+                    // 如果模板文件名为空 按照默认规则定位
+                    $template = str_replace('.', DIRECTORY_SEPARATOR, $controller) . $depr . cmf_parse_name($request->action(false));
+                } elseif (false === strpos($template, $depr)) {
+                    $template = str_replace('.', DIRECTORY_SEPARATOR, $controller) . $depr . $template;
+                }
+            }
+        } else {
+            $template = str_replace(['/', ':'], $depr, substr($template, 1));
+        }
+
+        return $path . ltrim($template, '/') . '.' . ltrim(config('view.view_suffix'), '.');
     }
 
     /**
@@ -88,10 +150,10 @@ class AdminBaseController extends BaseController
             return true;
         }
 
-        $module     = $this->request->module();
+        $app        = $this->app->http->getName();
         $controller = $this->request->controller();
         $action     = $this->request->action();
-        $rule       = $module . $controller . $action;
+        $rule       = $app . $controller . $action;
 
         $notRequire = ["adminIndexindex", "adminMainindex"];
         if (!in_array($rule, $notRequire)) {

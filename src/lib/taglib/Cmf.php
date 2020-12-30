@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -403,7 +403,7 @@ parse;
 
         $parse = <<<parse
 <php>
-    \\think\\facade\\Hook::listen('{$name}',{$param},{$once});
+    hook('{$name}',{$param},{$once});
 </php>
 parse;
         return $parse;
