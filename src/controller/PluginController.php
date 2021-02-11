@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -18,7 +18,7 @@ class PluginController extends HomeBaseController
     public function index($_plugin, $_controller, $_action)
     {
 
-        $_controller = Loader::parseName($_controller, 1);
+        $_controller = cmf_parse_name($_controller, 1);
 
         if (!preg_match('/^[A-Za-z](\w|\.)*$/', $_controller)) {
             abort(404, 'controller not exists:' . $_controller);

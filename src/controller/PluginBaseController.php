@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -10,6 +10,7 @@
 // +----------------------------------------------------------------------
 namespace cmf\controller;
 
+use app\admin\model\PluginModel;
 use think\Container;
 use think\exception\ValidateException;
 use think\facade\Config;
@@ -57,9 +58,23 @@ class PluginBaseController extends BaseController
     {
 
         if (is_null($this->plugin)) {
-            $pluginName   = $this->request->param('_plugin');
-            $pluginName   = cmf_parse_name($pluginName, 1);
-            $class        = cmf_get_plugin_class($pluginName);
+            $pluginName = $this->request->param('_plugin');
+            $pluginName = cmf_parse_name($pluginName, 1);
+            $class      = cmf_get_plugin_class($pluginName);
+
+
+            //检查是否启用。非启用则禁止访问。
+            $pluginModel = new PluginModel();
+            $findPlugin  = $pluginModel->where('name', '=', $pluginName)->find();
+            if (empty($findPlugin)) {
+                $this->error('插件未安装!');
+            }
+
+            if ($findPlugin['status'] != 1) {
+                $this->error('插件未启用!');
+            }
+
+
             $this->plugin = new $class;
         }
 
@@ -160,7 +175,7 @@ class PluginBaseController extends BaseController
     /**
      * 设置验证失败后是否抛出异常
      * @access protected
-     * @param  bool $fail 是否抛出异常
+     * @param bool $fail 是否抛出异常
      * @return $this
      */
     protected function validateFailException($fail = true)
@@ -172,11 +187,11 @@ class PluginBaseController extends BaseController
     /**
      * 验证数据
      * @access protected
-     * @param  array        $data     数据
-     * @param  string|array $validate 验证器名或者验证规则数组
-     * @param  array        $message  提示信息
-     * @param  bool         $batch    是否批量验证
-     * @param  mixed        $callback 回调方法（闭包）
+     * @param array        $data     数据
+     * @param string|array $validate 验证器名或者验证规则数组
+     * @param array        $message  提示信息
+     * @param bool         $batch    是否批量验证
+     * @param mixed        $callback 回调方法（闭包）
      * @return array|string|true
      * @throws ValidateException
      */

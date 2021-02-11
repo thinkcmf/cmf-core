@@ -2,7 +2,7 @@
 // +---------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +---------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +---------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -23,7 +23,7 @@ class InitHookBehavior
     // 行为扩展的执行入口必须是run
     public function run($param)
     {
-        Route::any('plugin/[:_plugin]/[:_controller]/[:_action]', "\\cmf\\controller\\PluginController@index");
+        Route::any('plugin/:_plugin/[:_controller]/[:_action]', "\\cmf\\controller\\PluginController@index");
         Route::get('new_captcha', "\\cmf\\controller\\CaptchaController@index");
 
         if (!cmf_is_installed()) {

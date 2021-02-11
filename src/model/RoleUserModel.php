@@ -12,17 +12,13 @@ namespace cmf\model;
 
 use think\Model;
 
-class HookModel extends Model
+class RoleUserModel extends Model
 {
     /**
      * 模型名称
      * @var string
      */
-    protected $name = 'hook';
+    protected $name = 'role_user';
 
-    public function plugins()
-    {
-        return $this->belongsToMany('PluginModel', 'hook_plugin', 'plugin', 'hook');
-    }
 
 }

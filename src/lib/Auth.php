@@ -2,7 +2,7 @@
 // +---------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +---------------------------------------------------------------------
-// | Copyright (c) 2013-2014 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +---------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -10,7 +10,10 @@
 // +---------------------------------------------------------------------
 namespace cmf\lib;
 
-use think\Db;
+use cmf\model\AuthAccessModel;
+use cmf\model\AuthRuleModel;
+use cmf\model\RoleUserModel;
+use cmf\model\UserModel;
 
 /**
  * ThinkCMF权限认证类
@@ -48,7 +51,7 @@ class Auth
                 $name = explode(',', $name);
             } else {
 
-                $findAuthRuleCount = Db::name('auth_rule')->where([
+                $findAuthRuleCount = AuthRuleModel::where([
                     'name' => $name
                 ])->count();
 
@@ -61,9 +64,8 @@ class Auth
         }
 
         $list   = []; //保存验证通过的规则名
-        $groups = Db::name('RoleUser')
-            ->alias("a")
-            ->join('__ROLE__ r', 'a.role_id = r.id')
+        $groups = RoleUserModel::alias("a")
+            ->join('role r', 'a.role_id = r.id')
             ->where(["a.user_id" => $uid, "r.status" => 1])
             ->column("role_id");
 
@@ -74,9 +76,8 @@ class Auth
         if (empty($groups)) {
             return false;
         }
-        $rules = Db::name('AuthAccess')
-            ->alias("a")
-            ->join('__AUTH_RULE__ b ', ' a.rule_name = b.name')
+        $rules = AuthAccessModel::alias("a")
+            ->join('auth_rule b ', ' a.rule_name = b.name')
             ->where('a.role_id', 'in', $groups)
             ->where('b.name', 'in', $name)
             ->select();
@@ -112,7 +113,7 @@ class Auth
      */
     private function getUserInfo($uid)
     {
-        return Db::name('user')->where('id', $uid)->find();
+        return UserModel::where('id', $uid)->find();
     }
 
 }

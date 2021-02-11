@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -92,7 +92,10 @@ class RestBaseController
 
     private function _initUser()
     {
-        $token      = $this->request->header('XX-Token');
+        $token = $this->request->header('Authorization');
+        if (empty($token)) {
+            $token = $this->request->header('XX-Token');
+        }
         $deviceType = $this->request->header('XX-Device-Type');
 
         if (empty($deviceType)) {
@@ -114,7 +117,7 @@ class RestBaseController
         $user = UserTokenModel::alias('a')
             ->field('b.*')
             ->where(['token' => $token, 'device_type' => $deviceType])
-            ->join('__USER__ b', 'a.user_id = b.id')
+            ->join('user b', 'a.user_id = b.id')
             ->find();
 
         if (!empty($user)) {
@@ -215,6 +218,26 @@ class RestBaseController
     }
 
     /**
+     * 验证数据并直接提示错误信息
+     * @access protected
+     * @param array        $data     数据
+     * @param string|array $validate 验证器名或者验证规则数组
+     * @param array        $message  提示信息
+     * @param mixed        $callback 回调方法（闭包）
+     * @return array|string|true
+     * @throws HttpResponseException
+     */
+    protected function validateFailError($data, $validate, $message = [], $callback = null)
+    {
+        $result = $this->validate($data, $validate, $message);
+        if ($result !== true) {
+            $this->error($result);
+        }
+
+        return $result;
+    }
+
+    /**
      * 操作成功跳转的快捷方法
      * @access protected
      * @param mixed $msg    提示信息
@@ -233,7 +256,7 @@ class RestBaseController
 
         $type                                   = $this->getResponseType();
         $header['Access-Control-Allow-Origin']  = '*';
-        $header['Access-Control-Allow-Headers'] = 'X-Requested-With,Content-Type,XX-Device-Type,XX-Token,XX-Api-Version,XX-Wxapp-AppId';
+        $header['Access-Control-Allow-Headers'] = 'X-Requested-With,Content-Type,XX-Device-Type,XX-Token,Authorization,XX-Api-Version,XX-Wxapp-AppId';
         $header['Access-Control-Allow-Methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS';
         $response                               = Response::create($result, $type)->header($header);
         throw new HttpResponseException($response);
@@ -262,7 +285,7 @@ class RestBaseController
 
         $type                                   = $this->getResponseType();
         $header['Access-Control-Allow-Origin']  = '*';
-        $header['Access-Control-Allow-Headers'] = 'X-Requested-With,Content-Type,XX-Device-Type,XX-Token,XX-Api-Version,XX-Wxapp-AppId';
+        $header['Access-Control-Allow-Headers'] = 'X-Requested-With,Content-Type,XX-Device-Type,XX-Token,Authorization,XX-Api-Version,XX-Wxapp-AppId';
         $header['Access-Control-Allow-Methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS';
         $response                               = Response::create($result, $type)->header($header);
         throw new HttpResponseException($response);

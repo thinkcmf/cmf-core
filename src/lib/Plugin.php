@@ -2,7 +2,7 @@
 // +---------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +---------------------------------------------------------------------
-// | Copyright (c) 2013-2014 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +---------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -53,14 +53,13 @@ abstract class Plugin
      */
     public function __construct()
     {
-
         $request = request();
 
         $engineConfig = Config::pull('template');
 
         $this->name = $this->getName();
 
-        $nameCStyle = Loader::parseName($this->name);
+        $nameCStyle = cmf_parse_name($this->name);
 
         $this->pluginPath     = WEB_ROOT . 'plugins/' . $nameCStyle . '/';
         $this->configFilePath = $this->pluginPath . 'config.php';
@@ -292,7 +291,6 @@ abstract class Plugin
                 }
             }
         }
-
 
         return $config;
     }

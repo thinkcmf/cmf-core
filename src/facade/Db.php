@@ -8,21 +8,14 @@
 // +----------------------------------------------------------------------
 // | Author: 老猫 <thinkcmf@126.com>
 // +----------------------------------------------------------------------
-namespace cmf\model;
 
-use think\Model;
+namespace think\facade;
 
-class HookModel extends Model
+/**
+ * @see \think\DbManager
+ * @mixin \think\DbManager
+ */
+class Db extends \think\Db
 {
-    /**
-     * 模型名称
-     * @var string
-     */
-    protected $name = 'hook';
-
-    public function plugins()
-    {
-        return $this->belongsToMany('PluginModel', 'hook_plugin', 'plugin', 'hook');
-    }
 
 }

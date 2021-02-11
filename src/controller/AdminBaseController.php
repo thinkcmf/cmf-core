@@ -2,7 +2,7 @@
 // +----------------------------------------------------------------------
 // | ThinkCMF [ WE CAN DO IT MORE SIMPLE ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2013-2019 http://www.thinkcmf.com All rights reserved.
+// | Copyright (c) 2013-present http://www.thinkcmf.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +---------------------------------------------------------------------
@@ -89,10 +89,10 @@ class AdminBaseController extends BaseController
             return true;
         }
 
-        $module     = $this->request->module();
+        $app     = $this->request->module();
         $controller = $this->request->controller();
         $action     = $this->request->action();
-        $rule       = $module . $controller . $action;
+        $rule       = $app . $controller . $action;
 
         $notRequire = ["adminIndexindex", "adminMainindex"];
         if (!in_array($rule, $notRequire)) {
