@@ -1107,6 +1107,19 @@ function hook_one($hook, $params = null)
 }
 
 /**
+ * 获取应用类名，
+ * @param $name      纯字母应用名，如:portal
+ * @return string
+ */
+function cmf_get_app_class($name)
+{
+    $name        = strtolower($name);
+    $classPrefix = ucwords($name);
+    $class       = "app\\{$name}\\{$classPrefix}App";
+    return $class;
+}
+
+/**
  * 获取插件类名
  * @param string $name 插件名
  * @return string
@@ -1142,7 +1155,7 @@ function cmf_get_plugin_config($name)
  * @param        $pattern
  * @return array
  */
-function cmf_scan_dir($pattern, $flags = null)
+function cmf_scan_dir($pattern, $flags = 0)
 {
     $files = glob($pattern, $flags);
     if (empty($files)) {
@@ -1906,10 +1919,10 @@ function cmf_curl_get($url)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 5);
     $SSL = substr($url, 0, 8) == "https://" ? true : false;
-//    if ($SSL) {
-//        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 信任任何证书
-//        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2); // 检查证书中是否设置域名
-//    }
+    if ($SSL) {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 信任任何证书
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2); // 检查证书中是否设置域名
+    }
     $content = curl_exec($ch);
     curl_close($ch);
     return $content;
@@ -2226,7 +2239,7 @@ function cmf_get_app_config_file($app, $file)
             $configFile = CMF_ROOT . "vendor/thinkcmf/cmf-swoole/src/{$file}.php";
             break;
         default:
-            $configFile = APP_PATH . $app . "/{$file}.php";
+            $configFile = app_path() . $app . "/{$file}.php";
             if (!file_exists($configFile)) {
                 $configFile = CMF_ROOT . "vendor/thinkcmf/cmf-app/src/{$app}/{$file}.php";
             }
@@ -2288,4 +2301,33 @@ function str_to_arr($string)
 {
     $result = is_string($string) ? explode(',', $string) : $string;
     return $result;
+}
+
+/**
+ * 检测是否是命令行
+ * @return bool
+ */
+function cmf_is_cli()
+{
+   return PHP_SAPI === 'cli' || defined('STDIN');
+}
+
+/**
+ * 检查目录是否可写
+ * @param $d
+ * @return bool
+ */
+function cmf_test_write($d)
+{
+    $tfile = "_test_write.cmf";
+    $fp    = @fopen($d . "/" . $tfile, "w");
+    if (!$fp) {
+        return false;
+    }
+    fclose($fp);
+    $rs = @unlink($d . "/" . $tfile);
+    if ($rs) {
+        return true;
+    }
+    return false;
 }

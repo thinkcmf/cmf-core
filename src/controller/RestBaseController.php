@@ -39,7 +39,7 @@ class RestBaseController
     //用户类型
     protected $userType;
 
-    protected $allowedDeviceTypes = ['mobile', 'android', 'iphone', 'ipad', 'web', 'pc', 'mac', 'wxapp'];
+    protected $allowedDeviceTypes = ['mobile', 'android', 'iphone', 'ipad', 'web', 'pc', 'mac', 'wxapp','ios'];
 
     /**
      * @var \think\Request Request实例
@@ -94,6 +94,9 @@ class RestBaseController
     private function _initUser()
     {
         $token = $this->request->header('Authorization');
+        if(substr($token,0,7) === 'Bearer '){
+            $token = substr($token,7);
+        }
         if (empty($token)) {
             $token = $this->request->header('XX-Token');
         }
