@@ -25,14 +25,14 @@ class AdminBaseController extends BaseController
             $user = UserModel::where('id', $sessionAdminId)->find();
 
             if (!$this->checkAccess($sessionAdminId)) {
-                $this->error("您没有访问权限！");
+                $this->error(lang('no access'));
             }
-            $this->assign("admin", $user);
+            $this->assign('admin', $user);
         } else {
             if ($this->request->isPost()) {
-                $this->error("您还没有登录！", url("admin/Public/login"));
+                $this->error(lang('You are not logged in'), url('admin/Public/login'));
             } else {
-                return $this->redirect(url("admin/Public/login"));
+                return $this->redirect(url('admin/Public/login'));
             }
         }
     }
@@ -186,7 +186,7 @@ class AdminBaseController extends BaseController
         $action     = $this->request->action();
         $rule       = $app . $controller . $action;
 
-        $notRequire = ["adminIndexindex", "adminMainindex"];
+        $notRequire = ['adminIndexindex', 'adminMainindex'];
         if (!in_array($rule, $notRequire)) {
             return cmf_auth_check($userId);
         } else {
