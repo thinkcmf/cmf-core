@@ -79,8 +79,7 @@ class HomeBaseController extends BaseController
     {
         $template = $this->parseTemplate($template);
         $more     = $this->getThemeFileMore($template);
-        $this->assign('theme_vars', $more['vars']);
-        $this->assign('theme_widgets', $more['widgets']);
+        $this->assign($more);
         $content        = $this->view->fetch($template, $vars, $config);
         $designingTheme = cookie('cmf_design_theme');
 
@@ -96,7 +95,7 @@ var _themeTest="test";
 var _app='{$app}';
 var _controller='{$controller}';
 var _action='{$action}';
-var _themeFile='{$more['file']}';
+var _themeFile='{$more['_theme_file']}';
 if(parent && parent.simulatorRefresh){
   parent.simulatorRefresh();  
 }
@@ -168,7 +167,6 @@ hello;
      */
     private function getThemeFileMore($file, $theme = '')
     {
-
         //TODO 增加缓存
         $theme = empty($theme) ? cmf_get_current_theme() : $theme;
 
@@ -184,13 +182,16 @@ hello;
         $webRoot   = str_replace('\\', '/', WEB_ROOT);
         $themeFile = str_replace(['.html', '.php', $themePath . $theme . '/', $webRoot], '', $file);
 
-        $files = Db::name('theme_file')->field('more')->where('theme', $theme)
+        $files = Db::name('theme_file')->field('more,file,id')->where('theme', $theme)
             ->where(function ($query) use ($themeFile) {
                 $query->where('is_public', 1)->whereOr('file', $themeFile);
-            })->select();
+            })->order('is_public desc')->select();
 
-        $vars    = [];
-        $widgets = [];
+        $vars           = [];
+        $widgets        = [];
+        $widgetsBlocks  = [];
+        $widgetsInBlock = [];
+
         foreach ($files as $file) {
             $oldMore = json_decode($file['more'], true);
             if (!empty($oldMore['vars'])) {
@@ -224,9 +225,34 @@ hello;
                     }
                 }
             }
+
+            if ($themeFile == $file['file'] && !empty($oldMore['widgets_blocks'])) {
+
+                if (!empty($oldMore['widgets_blocks'])) {
+                    foreach ($oldMore['widgets_blocks'] as $widgetsBlockName => $widgetsBlock) {
+                        $widgetsBlock['_file_id']         = $file['id'];
+                        $widgetsBlocks[$widgetsBlockName] = $widgetsBlock;
+                        if (!empty($widgetsBlock['widgets'])) {
+                            foreach ($widgetsBlock['widgets'] as $widget) {
+                                $widgetsInBlock[$widget['name']] = [
+                                    'name'    => $widget['name'],
+                                    'display' => $widget['display']
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        return ['vars' => $vars, 'widgets' => $widgets, 'file' => $themeFile];
+
+        return [
+            'theme_vars'           => $vars,
+            'theme_widgets'        => $widgets,
+            'theme_widgets_blocks' => $widgetsBlocks,
+            '_theme_widgets'       => $widgetsInBlock,
+            '_theme_file'          => $themeFile
+        ];
     }
 
     public function checkUserLogin($isreurl = false)

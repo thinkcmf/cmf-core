@@ -1,6 +1,11 @@
 # ThinkCMF核心包
 
 ## 更新日志
+### v6.0.14
+* 增加`php think cli`支持`/`分隔符
+* 增加前台模板自由控件功能
+* 增加`widgetsHead`,`widgetsBlock`,`widgetsScript`标签
+
 ### v6.0.13
 * 修复API跨域
 * 增加`tree`标签
