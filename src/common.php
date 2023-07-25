@@ -393,7 +393,7 @@ function cmf_clear_cache()
     foreach ($dirs as $dir) {
         $dirTool->delDir($dir);
     }
-    
+
     Cache::clear();
 }
 
@@ -834,9 +834,10 @@ function cmf_get_image_preview_url($file, $style = 'watermark')
  * 获取文件下载链接
  * @param string $file    文件路径，数据库里保存的相对路径
  * @param int    $expires 过期时间，单位 s
+ * @param bool   $force   是否直接下载
  * @return string 文件链接
  */
-function cmf_get_file_download_url($file, $expires = 3600)
+function cmf_get_file_download_url($file, $expires = 3600, $force = true)
 {
     if (empty($file)) {
         return '';
@@ -850,8 +851,19 @@ function cmf_get_file_download_url($file, $expires = 3600)
         return $file;
     } else {
         $storage = Storage::instance();
-        return $storage->getFileDownloadUrl($file, $expires);
+        return $storage->getFileDownloadUrl($file, $expires, $force);
     }
+}
+
+/**
+ * 获取文件访问链接
+ * @param string $file    文件路径，数据库里保存的相对路径
+ * @param int    $expires 过期时间，单位 s
+ * @return string 文件链接
+ */
+function cmf_get_file_url($file, $expires = 3600)
+{
+    return cmf_get_file_download_url($file, $expires, false);
 }
 
 /**
@@ -1233,7 +1245,7 @@ function cmf_plugin_url($url, $vars = [], $domain = false)
         foreach ($CMF_GV_routes[$pluginUrl] as $actionRoute) {
             $sameVars = array_intersect_assoc($vars, $actionRoute['vars']);
 
-            if (count($sameVars) == count($actionRoute['vars'])) {
+            if (!empty($sameVars) && count($sameVars) == count($actionRoute['vars'])) {
                 ksort($sameVars);
                 $pluginUrl = $pluginUrl . '&' . http_build_query($sameVars);
                 $vars      = array_diff_assoc($vars, $sameVars);
@@ -1250,9 +1262,10 @@ function cmf_plugin_url($url, $vars = [], $domain = false)
  * @param $userId   int        要检查权限的用户 ID
  * @param $name     string|array  需要验证的规则列表,支持逗号分隔的权限规则或索引数组
  * @param $relation string    如果为 'or' 表示满足任一条规则即通过验证;如果为 'and'则表示需满足所有规则才能通过验证
+ * @param $roleType string    角色类型
  * @return boolean            通过验证返回true;失败返回false
  */
-function cmf_auth_check($userId, $name = null, $relation = 'or')
+function cmf_auth_check($userId, $name = null, $relation = 'or', $roleType = 'admin')
 {
     if (empty($userId)) {
         return false;
@@ -1270,7 +1283,7 @@ function cmf_auth_check($userId, $name = null, $relation = 'or')
         $action     = $request->action();
         $name       = strtolower($app . "/" . $controller . "/" . $action);
     }
-    return $authObj->check($userId, $name, $relation);
+    return $authObj->check($userId, $name, $relation, $roleType);
 }
 
 function cmf_alpha_id($in, $to_num = false, $pad_up = 4, $passKey = null)
@@ -2338,6 +2351,15 @@ function cmf_mobile_mask($mobile)
 }
 
 /**
+ * UTF8 BOM，多用于CSV导出
+ * @return string
+ */
+function cmf_utf8_bom()
+{
+    return "\xEF\xBB\xBF";
+}
+
+/**
  * 吾辈当自强
  * @param string $dayDayUp
  * @return string
@@ -2346,3 +2368,5 @@ function cmf_together(string $dayDayUp = '2022-08-03 01:58')
 {
     return "吾辈当自强!\n$dayDayUp";
 }
+
+
