@@ -10,7 +10,6 @@
 // +----------------------------------------------------------------------
 use think\facade\Db;
 use cmf\model\OptionModel;
-use think\facade\Env;
 use dir\Dir;
 use think\facade\Route;
 use cmf\lib\Storage;
@@ -356,23 +355,24 @@ function cmf_random_string($len = 6)
  */
 function cmf_clear_cache()
 {
-    // 清除 opcache缓存
-    if (function_exists("opcache_reset")) {
-        opcache_reset();
-    }
+    try {
+        // 清除 opcache缓存
+        if (function_exists("opcache_reset")) {
+            opcache_reset();
+        }
 
-    $runtimePath = runtime_path();
-    $dirs        = [];
-    $rootDirs    = cmf_scan_dir($runtimePath . "*");
-    //$noNeedClear=array(".","..","Data");
-    $noNeedClear = ['.', '..', 'log', 'session'];
-    $rootDirs    = array_diff($rootDirs, $noNeedClear);
-    foreach ($rootDirs as $dir) {
+        $runtimePath = runtime_path();
+        $dirs        = [];
+        $rootDirs    = cmf_scan_dir($runtimePath . "*");
+        //$noNeedClear=array(".","..","Data");
+        $noNeedClear = ['.', '..', 'log', 'session'];
+        $rootDirs    = array_diff($rootDirs, $noNeedClear);
+        foreach ($rootDirs as $dir) {
 
-        if ($dir != "." && $dir != "..") {
-            $dir = $runtimePath . $dir;
-            if (is_dir($dir)) {
-                array_push($dirs, $dir);
+            if ($dir != "." && $dir != "..") {
+                $dir = $runtimePath . $dir;
+                if (is_dir($dir)) {
+                    array_push($dirs, $dir);
 //                $tmpRootDirs = cmf_scan_dir($dir . "/*");
 //                foreach ($tmpRootDirs as $tDir) {
 //                    if ($tDir != "." && $tDir != "..") {
@@ -384,17 +384,20 @@ function cmf_clear_cache()
 //                        }
 //                    }
 //                }
-            } else {
+                } else {
 //                @unlink($dir);
+                }
             }
         }
-    }
-    $dirTool = new Dir($runtimePath);
-    foreach ($dirs as $dir) {
-        $dirTool->delDir($dir);
-    }
+        $dirTool = new Dir($runtimePath);
+        foreach ($dirs as $dir) {
+            $dirTool->delDir($dir);
+        }
 
-    Cache::clear();
+        Cache::clear();
+    } catch (\Exception $e) {
+
+    }
 }
 
 /**
@@ -1411,7 +1414,10 @@ function cmf_get_order_sn()
 function cmf_get_file_extension($filename)
 {
     $pathinfo = pathinfo($filename);
-    return strtolower($pathinfo['extension']);
+    if (isset($pathinfo['extension'])) {
+        return strtolower($pathinfo['extension']);
+    }
+    return '';
 }
 
 /**
@@ -1911,10 +1917,10 @@ function cmf_replace_content_file_url($content, $isForDbSave = false)
  * 获取后台风格名称
  * @return string
  */
-function cmf_get_admin_style()
+function cmf_get_admin_style($defaultStyle = 'arcoadmin')
 {
     $adminSettings = cmf_get_option('admin_settings');
-    return empty($adminSettings['admin_style']) ? 'simpleadmin' : $adminSettings['admin_style'];
+    return empty($adminSettings['admin_style']) ? $defaultStyle : $adminSettings['admin_style'];
 }
 
 /**

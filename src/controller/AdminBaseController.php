@@ -22,6 +22,17 @@ class AdminBaseController extends BaseController
         parent::initialize();
         $sessionAdminId = session('ADMIN_ID');
         if (!empty($sessionAdminId)) {
+            if ($this->request->isPost()) {
+                $token = $this->request->header('Authorization', '');
+                if (empty($token)) {
+                    $token = $this->request->header('XX-Token');
+                }
+                if (empty($token) || $token !== session('token')) {
+                    session('ADMIN_ID', null);
+                    $this->error('鉴权失败,请在Header中传入token',url('admin/Public/login'),['code'=>'10002']);
+                }
+            }
+
             $user = UserModel::where('id', $sessionAdminId)->find();
 
             if (!$this->checkAccess($sessionAdminId)) {
@@ -145,7 +156,7 @@ class AdminBaseController extends BaseController
 
         if (!is_file($file)) {
 
-            $adminDefaultTheme = 'admin_simpleboot3';
+            $adminDefaultTheme = 'admin_default';
 
             $cmfAdminThemePath = config('template.cmf_admin_theme_path');
             $themePath         = "{$cmfAdminThemePath}{$adminDefaultTheme}";

@@ -2,13 +2,13 @@
 // +----------------------------------------------------------------------
 // | ThinkPHP [ WE CAN DO IT JUST THINK ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2006~2019 http://thinkphp.cn All rights reserved.
+// | Copyright (c) 2006~2023 http://thinkphp.cn All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +----------------------------------------------------------------------
 // | Author: liu21st <liu21st@gmail.com>
 // +----------------------------------------------------------------------
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace think;
 
@@ -91,7 +91,7 @@ class Http
      */
     public function path(string $path)
     {
-        if (substr($path, -1) != DIRECTORY_SEPARATOR) {
+        if (str_ends_with($path, DIRECTORY_SEPARATOR)) {
             $path .= DIRECTORY_SEPARATOR;
         }
 
@@ -316,5 +316,4 @@ class Http
         // 写入日志
         $this->app->log->save();
     }
-
 }

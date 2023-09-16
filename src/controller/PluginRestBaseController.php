@@ -13,7 +13,6 @@ namespace cmf\controller;
 use think\App;
 use think\exception\ValidateException;
 use think\Request;
-use think\Loader;
 
 class PluginRestBaseController extends RestBaseController
 {
@@ -52,11 +51,11 @@ class PluginRestBaseController extends RestBaseController
     /**
      * 验证数据
      * @access protected
-     * @param  array        $data     数据
-     * @param  string|array $validate 验证器名或者验证规则数组
-     * @param  array        $message  提示信息
-     * @param  bool         $batch    是否批量验证
-     * @param  mixed        $callback 回调方法（闭包）
+     * @param array        $data     数据
+     * @param string|array $validate 验证器名或者验证规则数组
+     * @param array        $message  提示信息
+     * @param bool         $batch    是否批量验证
+     * @param mixed        $callback 回调方法（闭包）
      * @return array|string|true
      * @throws ValidateException
      */
@@ -97,6 +96,30 @@ class PluginRestBaseController extends RestBaseController
         }
 
         return true;
+    }
+
+    /**
+     * 获取API路由路径
+     * @return string 如demo/articles,demo/artilces/:id
+     */
+    public function getRoutePath(): string
+    {
+        $rule = $this->request->rule();
+        $routeRuleName = $rule->getRule();
+
+        if (empty($routeRuleName) || $routeRuleName == "plugin/<_plugin>/<_controller?>/<_action?>") {
+            $pluginName = $this->request->param('_plugin');
+            $pluginName = cmf_parse_name($pluginName, 0);
+            $controller = $this->request->param('_controller');
+            $controller = cmf_parse_name($controller, 0);
+            $action     = $this->request->param('_action');
+            $routePath  = "plugin/{$pluginName}/$controller/$action";
+        } else {
+            $routePath = preg_replace("/<([0-9a-zA-Z_]+)>/", ':$1', $rule->getRule());
+            $routePath = str_replace('$', '', $routePath);
+        }
+
+        return $routePath;
     }
 
 
