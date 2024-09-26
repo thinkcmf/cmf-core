@@ -10,6 +10,7 @@
 // +----------------------------------------------------------------------
 namespace cmf\controller;
 
+use app\admin\model\ThemeFileI18nModel;
 use think\facade\Db;
 use app\admin\model\ThemeModel;
 
@@ -50,7 +51,8 @@ class HomeBaseController extends BaseController
 
         $this->view->engine()->config([
             'view_base'          => WEB_ROOT . $themePath . '/',
-            'tpl_replace_string' => $viewReplaceStr
+            'tpl_replace_string' => $viewReplaceStr,
+            'cache_prefix'       => cmf_current_lang() . '_',
         ]);
 
 //        $themeErrorTmpl = "{$themePath}/error.html";
@@ -135,6 +137,14 @@ hello;
         $cmfDefaultTheme = cmf_get_current_theme();
         $themePath       = WEB_ROOT . "{$cmfThemePath}{$cmfDefaultTheme}/";
 
+        $allowLangList = cmf_allow_lang_list();
+        if (count($allowLangList) > 1) {
+            $langSet = cmf_current_lang();
+            $this->app->lang->load([
+                $themePath . "public/lang/$langSet.php",
+            ]);
+        }
+
         // 基础视图目录
         $module = isset($module) ? $module : $this->app->http->getName();
         $path   = $themePath . ($module ? $module . DIRECTORY_SEPARATOR : '');
@@ -181,7 +191,7 @@ hello;
         $webRoot   = str_replace('\\', '/', WEB_ROOT);
         $themeFile = str_replace(['.html', '.php', $themePath . $theme . '/', $webRoot], '', $file);
 
-        $files = Db::name('theme_file')->field('more,file,id')->where('theme', $theme)
+        $files = Db::name('theme_file')->field('more,file,id,is_public')->where('theme', $theme)
             ->where(function ($query) use ($themeFile) {
                 $query->where('is_public', 1)->whereOr('file', $themeFile);
             })->order('is_public desc')->select();
@@ -191,8 +201,20 @@ hello;
         $widgetsBlocks  = [];
         $widgetsInBlock = [];
 
+        $currentLang = cmf_current_home_lang();
+        $loadI18n    = false;
+        if (!empty($currentLang) && $currentLang != $this->app->lang->defaultLangSet()) {
+            $loadI18n = true;
+        }
+
         foreach ($files as $file) {
             $oldMore = json_decode($file['more'], true);
+            if ($loadI18n) {
+                $findThemeFileI18n = ThemeFileI18nModel::where('file_id', $file['id'])->where('lang', $currentLang)->find();
+                if (!empty($findThemeFileI18n)) {
+                    $oldMore = $findThemeFileI18n['more'];
+                }
+            }
             if (!empty($oldMore['vars'])) {
                 foreach ($oldMore['vars'] as $varName => $var) {
                     $vars[$varName] = $var['value'];
@@ -225,8 +247,8 @@ hello;
                 }
             }
 
-            if ($themeFile == $file['file'] && !empty($oldMore['widgets_blocks'])) {
-
+            if (!empty($oldMore['widgets_blocks'])) {
+//               print_r($file);
                 if (!empty($oldMore['widgets_blocks'])) {
                     foreach ($oldMore['widgets_blocks'] as $widgetsBlockName => $widgetsBlock) {
                         $widgetsBlock['_file_id'] = $file['id'];

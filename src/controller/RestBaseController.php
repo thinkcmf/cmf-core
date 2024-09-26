@@ -88,6 +88,7 @@ class RestBaseController
     // 初始化
     protected function initialize()
     {
+        hook('home_init');
     }
 
     private function _initUser()
@@ -296,11 +297,12 @@ class RestBaseController
 
     /**
      * 获取当前登录用户的id
-     * @return int
+     * @param bool $checkEmpty 检查是否为空
+     * @return int|mixed
      */
-    public function getUserId()
+    public function getUserId($checkEmpty = true)
     {
-        if (empty($this->userId)) {
+        if ($checkEmpty && empty($this->userId)) {
             $this->error(['code' => 10001, 'msg' => '用户未登录']);
         }
         return $this->userId;

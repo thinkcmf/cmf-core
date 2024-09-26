@@ -608,6 +608,7 @@ hello;
                 $array = $this->parseAttr($match[0]);
                 $name  = $array['name'];
                 if (empty($widgetsBlocks[$name])) {
+                    $content = str_replace($match[0], "", $content);
                     continue;
                 }
 
@@ -652,6 +653,9 @@ hello;
                             $widgetsBlockContent .= <<<hello
 <?php 
 \$widget= \$theme_widgets_blocks['{$name}']['widgets']['{$key}'];
+if(!empty(\$widget['public_widget_id']) && isset(\$theme_widgets_blocks['public']['widgets'][\$widget['public_widget_id']])){
+   \$widget= \$theme_widgets_blocks['public']['widgets'][\$widget['public_widget_id']];   
+}
 \$_theme_file_id='{$widgetsBlocks[$name]['_file_id']}';
 \$_widget_id='{$key}';
 ?>

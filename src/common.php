@@ -140,7 +140,7 @@ function cmf_get_domain()
  */
 function cmf_get_root()
 {
-    $root = "";
+//    $root = '';
 //    $root = str_replace("//", '/', $root);
 //    $root = str_replace('/index.php', '', $root);
 //    if (defined('APP_NAMESPACE') && APP_NAMESPACE == 'api') {
@@ -149,7 +149,7 @@ function cmf_get_root()
 //
 //    $root = rtrim($root, '/');
 
-    return $root;
+    return '';
 }
 
 /**
@@ -582,7 +582,7 @@ function cmf_get_option($key)
     $optionValue = cache('cmf_options_' . $key);
 
     if (empty($optionValue)) {
-        $optionValue = OptionModel::where('option_name', $key)->value('option_value');
+        $optionValue = Db::name('option')->where('option_name', $key)->value('option_value');
         if (!empty($optionValue)) {
             $optionValue = json_decode($optionValue, true);
 
@@ -1189,7 +1189,7 @@ function cmf_scan_dir($pattern, $flags = 0)
  */
 function cmf_sub_dirs($dir)
 {
-    $dir     = ltrim($dir, "/");
+    $dir     = rtrim($dir, "/");
     $dirs    = [];
     $subDirs = cmf_scan_dir("$dir/*", GLOB_ONLYDIR);
     if (!empty($subDirs)) {
@@ -1398,12 +1398,113 @@ function cmf_current_lang()
 }
 
 /**
- * 获取惟一订单号
+ * 判断当前的语言包，并返回语言包名
+ * @return string  语言包名
+ */
+function cmf_current_home_lang()
+{
+    $langSet = session('current_home_lang');
+    if (empty($langSet)) {
+        return app()->lang->getLangSet();
+    }
+    return $langSet;
+}
+
+
+/**
+ * 判断当前的语言包，并返回语言包名
+ * @return string  语言包名
+ */
+function cmf_current_admin_lang()
+{
+    $langSet = session('current_admin_lang');
+    if (empty($langSet)) {
+        return app()->lang->getLangSet();
+    }
+    return $langSet;
+}
+
+/**
+ * 获取前台语言包列表
+ * @return array  语言包列表
+ */
+function cmf_allow_lang_list(): array
+{
+    $langConfig = app()->lang->getConfig();
+    return $langConfig['allow_lang_list'] ?? [];
+}
+
+/**
+ * 获取后台语言包列表
+ * @return array  语言包列表
+ */
+function cmf_admin_allow_lang_list(): array
+{
+    $langConfig = app()->lang->getConfig();
+    return $langConfig['admin_allow_lang_list'] ?? [];
+}
+
+/**
+ * 判断是否开启前台多语言
+ * @return bool
+ */
+function cmf_home_multi_lang(): bool
+{
+    $langConfig = app()->lang->getConfig();
+    if (!empty($langConfig['home_multi_lang']) && !empty($langConfig['allow_lang_list']) && count($langConfig['allow_lang_list']) > 1) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 判断是否开启后台多语言
+ * @return bool
+ */
+function cmf_admin_multi_lang(): bool
+{
+    $langConfig = app()->lang->getConfig();
+    if (!empty($langConfig['admin_multi_lang']) && !empty($langConfig['admin_allow_lang_list']) && count($langConfig['admin_allow_lang_list']) > 1) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 获取多语言设置
+ * @return array  多语言设置
+ */
+function cmf_lang_config(): array
+{
+    $langConfig = app()->lang->getConfig();
+
+    $defaultConfig = [
+        // 前台多语言开关
+        'home_multi_lang'       => 0,
+        // 后台多语言开关
+        'admin_multi_lang'      => 0,
+        // 多语言模式;1:pathinfo前缀;2:域名前缀;
+        'multi_lang_mode'       => 1,
+        // 后台默认语言
+        'admin_default_lang'    => 'zh-cn',
+        // 后台允许的语言列表
+        'admin_allow_lang_list' => [],
+        // 多语言域名列表 ['cmf.im'=>'zh-cn']
+        'lang_domain_list'      => [],
+        // 语言包别名 ['zh-cn' => 'cn']
+        'lang_alias'            => [],
+    ];
+
+    return array_merge($defaultConfig, $langConfig);
+}
+
+/**
+ * 获取订单号
  * @return string
  */
 function cmf_get_order_sn()
 {
-    return date('Ymd') . substr(implode(NULL, array_map('ord', str_split(substr(uniqid(), 7, 13), 1))), 0, 8);
+    return date('Ymd') . substr(implode('', array_map('ord', str_split(substr(uniqid(), 7, 13), 1))), 0, 8);
 }
 
 /**
@@ -1752,17 +1853,80 @@ function cmf_url_encode($url, $params)
 }
 
 /**
+ * 生成当前请求地址的多语言链接
+ * @param string $langSet 语言包
+ * @param string $url     不带语言的URL
+ * @return string
+ */
+function cmf_lang_url(string $langSet = '', string $url = ''): string
+{
+    $request = request();
+    if (empty($url)) {
+        $pathInfo = $request->pathinfo();
+        $query    = $request->get();
+        $url      = $pathInfo;
+        if (!empty($query)) {
+            $url .= '?' . http_build_query($query);
+        }
+    } else {
+        $url = trim($url, '/');
+    }
+
+    $langConfig = app()->lang->getConfig();
+
+    if (empty($langConfig['multi_lang_mode'])) {
+        $langConfig['multi_lang_mode'] = 1;
+    }
+
+    if (empty($langSet)) {
+        $langSet = app()->lang->getLangSet();
+    }
+
+    switch ($langConfig['multi_lang_mode']) {
+        case 1: // URL模式
+        {
+            if ($langSet == $langConfig['default_lang']) {
+                $langSet = '';
+            } else {
+                if (!empty($langConfig['lang_alias'][$langSet])) {
+                    $langSet = $langConfig['lang_alias'][$langSet];
+                }
+            }
+
+            $url = rtrim(cmf_get_root() . "/$langSet", '/') . "/$url";
+            break;
+        }
+        case 2: // 域名模式
+        {
+            $domain = $request->host();
+            if (!empty($langConfig['lang_domain_list'])) {
+                $langDomainList = array_flip($langConfig['lang_domain_list']);
+                if (!empty($langDomainList[$langSet])) {
+                    $domain = $langDomainList[$langSet];
+                }
+            }
+
+            $url = $request->scheme() . "://$domain" . cmf_get_root() . "/$url";
+            break;
+        }
+    }
+
+    return $url;
+}
+
+/**
  * CMF Url生成
  * @param string       $url    路由地址
  * @param string|array $vars   变量
  * @param bool|string  $suffix 生成的URL后缀
  * @param bool|string  $domain 域名
+ * @param bool|string  $lang   语言
  * @return string
  * @throws \think\db\exception\DataNotFoundException
  * @throws \think\db\exception\ModelNotFoundException
  * @throws \think\exception\DbException
  */
-function cmf_url($url = '', $vars = '', $suffix = true, $domain = false)
+function cmf_url($url = '', $vars = '', $suffix = true, $domain = false, $lang = true)
 {
     global $CMF_GV_routes;
 
@@ -1825,7 +1989,7 @@ function cmf_url($url = '', $vars = '', $suffix = true, $domain = false)
 //        $url = $url . '@' . $domain;
 //    }
 
-    return url($url, $vars, $suffix, $domain);
+    return Route::buildUrl($url, $vars)->suffix($suffix)->domain($domain)->lang($lang)->build();
 }
 
 /**

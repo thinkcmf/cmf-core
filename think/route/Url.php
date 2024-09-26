@@ -69,6 +69,12 @@ class Url
     protected $domain = false;
 
     /**
+     * 语言
+     * @var string|bool
+     */
+    protected $lang = false;
+
+    /**
      * 架构函数
      * @access public
      * @param  string $url URL地址
@@ -119,6 +125,18 @@ class Url
     }
 
     /**
+     * 设置语言
+     * @access public
+     * @param string|bool $lang 语言
+     * @return $this
+     */
+    public function lang($lang)
+    {
+        $this->lang = $lang;
+        return $this;
+    }
+
+    /**
      * 设置URL 根地址
      * @access public
      * @param  string $root URL root
@@ -157,6 +175,19 @@ class Url
 
         $request    = $this->app->request;
         $rootDomain = $request->rootDomain();
+
+        $langConfig = $this->app->lang->getConfig();
+        if (
+            !empty($langConfig['multi_lang_mode']) &&
+            $langConfig['multi_lang_mode'] == 2 &&
+            !empty($langConfig['lang_domain_list'])
+        ) {
+            $langDomainList = array_flip($langConfig['lang_domain_list']);
+            $langSet        = $this->app->lang->getLangSet();
+            if (isset($langDomainList[$langSet])) {
+                $domain = $langDomainList[$langSet];
+            }
+        }
 
         if (true === $domain) {
             // 自动判断域名
@@ -218,7 +249,7 @@ class Url
             }
         }
 
-        return (empty($suffix) || str_starts_with($suffix, '.')) ? (string) $suffix : '.' . $suffix;
+        return (empty($suffix) || str_starts_with($suffix, '.')) ? (string)$suffix : '.' . $suffix;
     }
 
     /**
@@ -336,7 +367,7 @@ class Url
 
             foreach ($pattern as $key => $val) {
                 if (isset($vars[$key])) {
-                    $url    = str_replace(['[:' . $key . ']', '<' . $key . '?>', ':' . $key, '<' . $key . '>'], $type ? (string) $vars[$key] : urlencode((string) $vars[$key]), $url);
+                    $url    = str_replace(['[:' . $key . ']', '<' . $key . '?>', ':' . $key, '<' . $key . '>'], $type ? (string)$vars[$key] : urlencode((string)$vars[$key]), $url);
                     $keys[] = $key;
                     $url    = str_replace(['/?', '-?'], ['/', '-'], $url);
                     $result = [rtrim($url, '?/-'), $domain, $suffix];
@@ -489,7 +520,7 @@ class Url
                 $url .= $suffix . ($vars ? '?' . $vars : '') . $anchor;
             } else {
                 foreach ($vars as $var => $val) {
-                    $val = (string) $val;
+                    $val = (string)$val;
                     if ('' !== $val) {
                         $url .= $depr . $var . $depr . urlencode($val);
                     }
@@ -504,8 +535,32 @@ class Url
         // 检测域名
         $domain = $this->parseDomain($url, $domain);
 
+        $langSet = '';
+        if ($this->lang) {
+            if (is_string($this->lang)) {
+                $langSet = $this->lang;
+            } else {
+                $langSet = $this->app->lang->getLangSet();
+            }
+
+            if ($langSet == $this->app->lang->defaultLangSet()) {
+                $langSet = '';
+            } else {
+                $langConfig = $this->app->lang->getConfig();
+                if (isset($langConfig['multi_lang_mode']) && $langConfig['multi_lang_mode'] == 1) {
+                    if (!empty($langConfig['lang_alias'][$langSet])) {
+                        $langSet = "{$langConfig['lang_alias'][$langSet]}/";
+                    } else {
+                        $langSet = "$langSet/";
+                    }
+                } else {
+                    $langSet = '';
+                }
+            }
+        }
+
         // URL组装
-        return $domain . rtrim($this->root, '/') . '/' . ltrim($url, '/');
+        return $domain . rtrim($this->root, '/') . '/' . $langSet . ltrim($url, '/');
     }
 
     public function __toString()
